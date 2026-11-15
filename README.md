@@ -13,7 +13,7 @@ https://shinpoyo.com/waveforge/
 
 ## Windows版（インストーラー）
 
-このリポジトリの Releases から `WaveForge.Setup.1.1.1.exe` をダウンロードして実行してください。
+このリポジトリの Releases から `WaveForge.Setup.1.1.2.exe` をダウンロードして実行してください。
 
 - トラック数の上限なし（音声・MIDIとも）。長い曲や重い処理はこちらが向いています
 - Web版とプロジェクト（JSON）をそのままやり取りできます
