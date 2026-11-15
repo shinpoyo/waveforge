@@ -2916,6 +2916,8 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
       const MAX_EDITABLE_TRACKS = 8;
       const MAX_EDITABLE_MIDI_TRACKS = 50;
       const MAX_MIDI_POLYPHONY = 128;
+      const MIDI_LOOKAHEAD_INTERVAL_MS = 25;
+      const MIDI_LOOKAHEAD_WINDOW_SEC = 0.15;
       const MIDI_WAVEFORMS = ['sine', 'triangle', 'square', 'sawtooth'];
       const DEFAULT_MIDI_ADSR = { attack: 0.012, decay: 0.14, sustain: 0.65, release: 0.16 };
       const PIANO_ROLL_MIN_MIDI = 36; // C2
@@ -2972,6 +2974,39 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
       function secondsToBeats(seconds, bpm = state.bpm) {
         const beatSec = getBeatDurationSec(bpm);
         return beatSec > 0 ? (Number(seconds) || 0) / beatSec : 0;
+      }
+
+      function getMidiClipDurationBeats(clip, bpm = state.bpm) {
+        if (!clip) return 4;
+        const explicitBeats = Number(clip.durationBeats);
+        if (Number.isFinite(explicitBeats) && explicitBeats > 0) {
+          return explicitBeats;
+        }
+        return Math.max(0.0625, secondsToBeats(Math.max(0.05, Number(clip.duration) || 1.0), bpm));
+      }
+
+      function getClipDurationSec(clip, bpm = state.bpm) {
+        if (!clip) return 0;
+        if (isMidiClip(clip)) {
+          return Math.max(0.05, beatsToSeconds(getMidiClipDurationBeats(clip, bpm), bpm));
+        }
+        return Math.max(0.01, Number(clip.duration) || 0);
+      }
+
+      function syncMidiClipDuration(clip, bpm = state.bpm) {
+        if (!clip || !isMidiClip(clip)) return clip ? clip.duration : 0;
+        const beats = getMidiClipDurationBeats(clip, bpm);
+        clip.durationBeats = beats;
+        clip.duration = Math.max(0.05, beatsToSeconds(beats, bpm));
+        return clip.duration;
+      }
+
+      function syncAllMidiClipDurations(bpm = state.bpm) {
+        state.clips.forEach(c => {
+          if (isMidiClip(c)) {
+            syncMidiClipDuration(c, bpm);
+          }
+        });
       }
 
       function midiPitchToFreq(pitch) {
@@ -6417,7 +6452,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         const clips = state.clips.filter(c => c.trackId === track.id);
         if (clips.length > 0) {
           startTime = Math.min(...clips.map(c => c.startTimeInTimeline));
-          endTime = Math.max(...clips.map(c => c.startTimeInTimeline + c.duration));
+          endTime = Math.max(...clips.map(c => c.startTimeInTimeline + getClipDurationSec(c)));
         } else if (state.isLooping) {
           startTime = state.loopStart;
           endTime = state.loopEnd;
@@ -6760,26 +6795,31 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
       // Clone clips non-destructively preserving AudioBuffer reference, source metadata & MIDI notes
       function cloneClips(clips) {
-        return clips.map(c => ({
-          id: c.id,
-          type: isMidiClip(c) ? 'midi' : 'audio',
-          trackId: c.trackId,
-          name: c.name,
-          startTimeInTimeline: c.startTimeInTimeline,
-          offsetInBuffer: c.offsetInBuffer,
-          duration: c.duration,
-          fadeIn: c.fadeIn,
-          fadeOut: c.fadeOut,
-          gain: c.gain,
-          notes: isMidiClip(c) ? normalizeMidiNotes(c.notes || []) : undefined,
-          sourceFileName: c.sourceFileName || null,
-          sourceFileSize: c.sourceFileSize !== undefined ? c.sourceFileSize : null,
-          sourceLastModified: c.sourceLastModified !== undefined ? c.sourceLastModified : null,
-          sourceCacheKey: c.sourceCacheKey || null,
-          demoRecipe: c.demoRecipe ? JSON.parse(JSON.stringify(c.demoRecipe)) : null,
-          waveformSettings: c.waveformSettings ? { ...c.waveformSettings } : null,
-          buffer: c.buffer || null
-        }));
+        return clips.map(c => {
+          const midiClip = isMidiClip(c);
+          const durationBeats = midiClip ? getMidiClipDurationBeats(c) : undefined;
+          return {
+            id: c.id,
+            type: midiClip ? 'midi' : 'audio',
+            trackId: c.trackId,
+            name: c.name,
+            startTimeInTimeline: c.startTimeInTimeline,
+            offsetInBuffer: c.offsetInBuffer,
+            duration: midiClip ? Math.max(0.05, beatsToSeconds(durationBeats, state.bpm)) : c.duration,
+            durationBeats,
+            fadeIn: c.fadeIn,
+            fadeOut: c.fadeOut,
+            gain: c.gain,
+            notes: midiClip ? normalizeMidiNotes(c.notes || []) : undefined,
+            sourceFileName: c.sourceFileName || null,
+            sourceFileSize: c.sourceFileSize !== undefined ? c.sourceFileSize : null,
+            sourceLastModified: c.sourceLastModified !== undefined ? c.sourceLastModified : null,
+            sourceCacheKey: c.sourceCacheKey || null,
+            demoRecipe: c.demoRecipe ? JSON.parse(JSON.stringify(c.demoRecipe)) : null,
+            waveformSettings: c.waveformSettings ? { ...c.waveformSettings } : null,
+            buffer: c.buffer || null
+          };
+        });
       }
 
       function cloneFxList(fxList) {
@@ -6863,6 +6903,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
         // 2. Reconcile clips & prune unreferenced audio cache
         state.clips = cloneClips(snapshot.clips);
+        syncAllMidiClipDurations(state.bpm);
         pruneUnusedAudioBufferCache();
 
         // 3. Selection
@@ -7356,6 +7397,16 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           ? 'midi'
           : 'audio';
 
+        let resolvedDurationBeats = undefined;
+        let resolvedDuration = duration;
+        if (clipType === 'midi') {
+          const optBeats = Number(options.durationBeats);
+          resolvedDurationBeats = (Number.isFinite(optBeats) && optBeats > 0)
+            ? optBeats
+            : Math.max(0.0625, secondsToBeats(Math.max(0.05, Number(duration) || 1.0), state.bpm));
+          resolvedDuration = Math.max(0.05, beatsToSeconds(resolvedDurationBeats, state.bpm));
+        }
+
         const clip = {
           id: clipId,
           type: clipType,
@@ -7363,7 +7414,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           name: name,
           startTimeInTimeline: startTimeInTimeline,
           offsetInBuffer: clipType === 'midi' ? 0 : offsetInBuffer,
-          duration: duration,
+          duration: resolvedDuration,
           fadeIn: parsedFadeIn,
           fadeOut: parsedFadeOut,
           gain: options.gain !== undefined ? options.gain : 1.0,
@@ -7376,6 +7427,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           buffer: clipType === 'midi' ? null : (buffer || null)
         };
         if (clipType === 'midi') {
+          clip.durationBeats = resolvedDurationBeats;
           clip.notes = normalizeMidiNotes(options.notes);
         }
         state.clips.push(clip);
@@ -7389,10 +7441,12 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           showToast('ロック中のトラックにはMIDIクリップを作成できません');
           return null;
         }
-        const safeBeats = Math.max(0.25, Number(durationBeats) || 4);
-        const durationSec = options.duration !== undefined
-          ? Math.max(0.1, Number(options.duration) || 1)
-          : Math.max(0.25, beatsToSeconds(safeBeats, state.bpm));
+        const safeBeats = (options.durationBeats !== undefined && Number(options.durationBeats) > 0)
+          ? Number(options.durationBeats)
+          : ((options.duration !== undefined && Number(options.duration) > 0)
+            ? Math.max(0.0625, secondsToBeats(Number(options.duration), state.bpm))
+            : Math.max(0.25, Number(durationBeats) || 4));
+        const durationSec = Math.max(0.05, beatsToSeconds(safeBeats, state.bpm));
         const existingMidiClips = state.clips.filter(c => c.trackId === track.id).length;
         const clipName = options.name || `MIDI Pattern ${existingMidiClips + 1}`;
         const clip = addClipToTrack(
@@ -7405,6 +7459,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           {
             ...options,
             type: 'midi',
+            durationBeats: safeBeats,
             notes: normalizeMidiNotes(notes)
           }
         );
@@ -7470,15 +7525,18 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         const sourceClips = state.clips.filter(c => c.trackId === sourceTrack.id);
         sourceClips.forEach(c => {
           const midiClip = isMidiClip(c);
+          const clipDurSec = getClipDurationSec(c);
+          const clipDurBeats = midiClip ? getMidiClipDurationBeats(c) : undefined;
           addClipToTrack(
             newTrack.id,
             c.name,
             midiClip ? null : (c.buffer || null),
             c.startTimeInTimeline,
             midiClip ? 0 : (c.offsetInBuffer || 0),
-            c.duration,
+            clipDurSec,
             {
               type: midiClip ? 'midi' : 'audio',
+              durationBeats: clipDurBeats,
               notes: midiClip ? normalizeMidiNotes(c.notes) : undefined,
               fadeIn: c.fadeIn !== undefined ? c.fadeIn : 0,
               fadeOut: c.fadeOut !== undefined ? c.fadeOut : 0,
@@ -7518,17 +7576,20 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
         pushHistoryState('クリップ複製');
 
-        const newStart = Math.max(0, original.startTimeInTimeline + original.duration);
         const midiClip = isMidiClip(original);
+        const origDurSec = getClipDurationSec(original);
+        const origDurBeats = midiClip ? getMidiClipDurationBeats(original) : undefined;
+        const newStart = Math.max(0, original.startTimeInTimeline + origDurSec);
         const duplicated = addClipToTrack(
           original.trackId,
           original.name,
           midiClip ? null : (original.buffer || null),
           newStart,
           midiClip ? 0 : (original.offsetInBuffer || 0),
-          original.duration,
+          origDurSec,
           {
             type: midiClip ? 'midi' : 'audio',
+            durationBeats: origDurBeats,
             notes: midiClip ? normalizeMidiNotes(original.notes) : undefined,
             fadeIn: original.fadeIn !== undefined ? original.fadeIn : 0,
             fadeOut: original.fadeOut !== undefined ? original.fadeOut : 0,
@@ -7562,18 +7623,36 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
       }
 
       // --- Built-in Web Audio Polyphonic MIDI Synth Engine (OscillatorNode + ADSR GainNode, 128-Voice Cap) ---
+      function pruneFinishedMidiVoices(registry, currentCtxTime = 0) {
+        if (!Array.isArray(registry) || registry.length === 0) return registry;
+        let writeIdx = 0;
+        for (let i = 0; i < registry.length; i++) {
+          const v = registry[i];
+          if (!v || v.stolen || v.ended || v.endTime <= currentCtxTime) continue;
+          registry[writeIdx++] = v;
+        }
+        registry.length = writeIdx;
+        return registry;
+      }
+
       function enforceMidiPolyphonyLimit(registry, atCtxTime, maxVoices = MAX_MIDI_POLYPHONY) {
-        if (!Array.isArray(registry) || registry.length < maxVoices) return;
+        if (!Array.isArray(registry)) return;
+        // Prune finished/stolen voices in-place so only live/active voices remain
+        pruneFinishedMidiVoices(registry, atCtxTime);
+        if (registry.length < maxVoices) return;
+
         const overlapping = [];
         for (let i = 0; i < registry.length; i++) {
           const v = registry[i];
-          if (!v || v.stolen) continue;
-          if (v.endTime > atCtxTime && v.startTime <= atCtxTime + 0.002) {
+          if (v.startTime <= atCtxTime + 0.002 && v.endTime > atCtxTime) {
             overlapping.push(v);
           }
         }
-        while (overlapping.length >= maxVoices) {
-          const victim = overlapping.shift();
+        if (overlapping.length < maxVoices) return;
+
+        const stealCount = overlapping.length - maxVoices + 1;
+        for (let k = 0; k < stealCount; k++) {
+          const victim = overlapping[k];
           if (!victim) break;
           victim.stolen = true;
           try {
@@ -7589,6 +7668,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
             }
           } catch (err) {}
         }
+        pruneFinishedMidiVoices(registry, atCtxTime);
       }
 
       function scheduleMidiNoteVoice(audioCtx, destNode, opts) {
@@ -7720,7 +7800,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
         // Clean already-finished voices before auditioning
         const now = ctx.currentTime;
-        state.activeMidiVoices = (state.activeMidiVoices || []).filter(v => v && !v.ended && !v.stolen && v.endTime > now - 0.05);
+        pruneFinishedMidiVoices(state.activeMidiVoices, now);
 
         return scheduleMidiNoteVoice(ctx, destNode, {
           waveform: getTrackSynthWaveform(track),
@@ -7735,19 +7815,35 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         });
       }
 
+      // Lookahead MIDI Playback Scheduler State (25ms tick / 0.15s horizon)
+      const midiLookaheadState = {
+        timerId: null,
+        scheduledNoteKeys: new Set(),
+        clipGainMap: new Map()
+      };
+
+      function stopMidiLookaheadTimer() {
+        if (midiLookaheadState.timerId !== null) {
+          clearInterval(midiLookaheadState.timerId);
+          midiLookaheadState.timerId = null;
+        }
+        midiLookaheadState.scheduledNoteKeys.clear();
+        midiLookaheadState.clipGainMap.clear();
+      }
+
       // --- Precise Playback Engine ---
       function startPlayback() {
         const ctx = getAudioContext();
         if (state.isPlaying) return;
 
-        // Stop any remaining active sources
+        // Stop any remaining active sources & lookahead timers
         stopAllActiveSources();
 
         state.isPlaying = true;
         state.playbackStartTimeInCtx = ctx.currentTime;
         state.playbackStartOffset = state.currentPlayheadTime;
 
-        // Schedule all clips that are within current playback window
+        // Schedule all audio clips and launch MIDI lookahead scheduler
         scheduleClipsForPlayback(state.playbackStartOffset);
 
         // Update UI
@@ -7766,8 +7862,12 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
       }
 
       function pausePlayback() {
-        if (!state.isPlaying) return;
+        if (!state.isPlaying) {
+          stopMidiLookaheadTimer();
+          return;
+        }
         state.isPlaying = false;
+        stopMidiLookaheadTimer();
         stopAllActiveSources();
 
         document.getElementById('btn-play').classList.remove('playing');
@@ -7802,6 +7902,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
       }
 
       function stopAllActiveSources() {
+        stopMidiLookaheadTimer();
         if (!state.audioCtx) return;
         const ctx = state.audioCtx;
 
@@ -7840,13 +7941,14 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
       }
 
       function applyClipFadeAndGainEnvelope(clipGain, clip, scheduleWhen, timeIntoClip, playDuration) {
+        const clipDur = getClipDurationSec(clip);
         const rawFadeIn = Math.max(0, Number(clip.fadeIn) || 0);
         const rawFadeOut = Math.max(0, Number(clip.fadeOut) || 0);
-        const effectiveFadeIn = Math.min(rawFadeIn, clip.duration / 2);
-        const effectiveFadeOut = Math.min(rawFadeOut, clip.duration / 2);
+        const effectiveFadeIn = Math.min(rawFadeIn, clipDur / 2);
+        const effectiveFadeOut = Math.min(rawFadeOut, clipDur / 2);
 
         const clipAbsoluteStart = scheduleWhen - timeIntoClip;
-        const clipAbsoluteEnd = clipAbsoluteStart + clip.duration;
+        const clipAbsoluteEnd = clipAbsoluteStart + clipDur;
         const fadeInEndTime = clipAbsoluteStart + effectiveFadeIn;
         const fadeOutStartTime = clipAbsoluteEnd - effectiveFadeOut;
         const actualStopTime = scheduleWhen + playDuration;
@@ -7862,8 +7964,8 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
             const endFrac = (timeIntoClip + playDuration) / effectiveFadeIn;
             clipGain.gain.linearRampToValueAtTime(Math.max(0.0001, targetGain * endFrac), actualStopTime);
           }
-        } else if (effectiveFadeOut > 0.001 && timeIntoClip >= (clip.duration - effectiveFadeOut)) {
-          const timeRemaining = Math.max(0, clip.duration - timeIntoClip);
+        } else if (effectiveFadeOut > 0.001 && timeIntoClip >= (clipDur - effectiveFadeOut)) {
+          const timeRemaining = Math.max(0, clipDur - timeIntoClip);
           const currentFrac = timeRemaining / effectiveFadeOut;
           const currentGain = Math.max(0.0001, targetGain * currentFrac);
           clipGain.gain.setValueAtTime(currentGain, scheduleWhen);
@@ -7882,10 +7984,115 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         }
       }
 
-      // Schedule clips starting from timelineOffset
+      // Incremental lookahead scheduler for MIDI notes (25ms interval / 0.15s lookahead window)
+      function scheduleMidiLookaheadTick(overrideTimelineOffset = null) {
+        if (!state.audioCtx) return;
+        if (overrideTimelineOffset === null && !state.isPlaying) return;
+
+        const ctx = state.audioCtx;
+        const ctxNow = ctx.currentTime;
+
+        // Prune finished MIDI voices periodically so activeMidiVoices never accumulates stale entries
+        pruneFinishedMidiVoices(state.activeMidiVoices, ctxNow);
+
+        const currentTimelinePos = overrideTimelineOffset !== null
+          ? Math.max(0, Number(overrideTimelineOffset) || 0)
+          : Math.max(0, state.playbackStartOffset + Math.max(0, ctxNow - state.playbackStartTimeInCtx));
+
+        let horizonTimeline = currentTimelinePos + MIDI_LOOKAHEAD_WINDOW_SEC;
+        if (state.isLooping) {
+          if (currentTimelinePos >= state.loopEnd) return;
+          horizonTimeline = Math.min(horizonTimeline, state.loopEnd);
+        }
+        if (horizonTimeline <= currentTimelinePos) return;
+
+        const clips = state.clips;
+        for (let ci = 0; ci < clips.length; ci++) {
+          const clip = clips[ci];
+          if (!isMidiClip(clip)) continue;
+          const notes = Array.isArray(clip.notes) ? clip.notes : [];
+          if (notes.length === 0) continue;
+
+          const track = state.tracks.find(t => t.id === clip.trackId);
+          if (!track || !track.inputNode) continue;
+
+          const clipStart = clip.startTimeInTimeline;
+          const clipDur = getClipDurationSec(clip, state.bpm);
+          clip.duration = clipDur;
+          const clipEnd = state.isLooping ? Math.min(clipStart + clipDur, state.loopEnd) : (clipStart + clipDur);
+          if (clipEnd <= currentTimelinePos || clipStart >= horizonTimeline) continue;
+
+          let clipGainEntry = midiLookaheadState.clipGainMap.get(clip.id);
+          if (!clipGainEntry) {
+            const timeIntoClip = Math.max(0, currentTimelinePos - clipStart);
+            const timeUntilClip = Math.max(0, clipStart - currentTimelinePos);
+            const scheduleWhen = ctxNow + timeUntilClip;
+            const playDuration = Math.max(0, clipEnd - Math.max(currentTimelinePos, clipStart));
+            if (playDuration <= 0.005) continue;
+
+            const clipGain = ctx.createGain();
+            applyClipFadeAndGainEnvelope(clipGain, clip, scheduleWhen, timeIntoClip, playDuration);
+            clipGain.connect(track.inputNode);
+            state.activeSources.push({ source: null, gainNode: clipGain, clipId: clip.id });
+            clipGainEntry = { clipGain };
+            midiLookaheadState.clipGainMap.set(clip.id, clipGainEntry);
+          }
+
+          const waveform = getTrackSynthWaveform(track);
+          const adsr = getTrackSynthAdsr(track);
+          const sortedNotes = notes.slice().sort((a, b) => (a.start - b.start) || (a.pitch - b.pitch));
+
+          for (let ni = 0; ni < sortedNotes.length; ni++) {
+            const note = sortedNotes[ni];
+            const noteKey = `${clip.id}:${note.id || ni}`;
+            if (midiLookaheadState.scheduledNoteKeys.has(noteKey)) continue;
+
+            const noteStartInClipSec = beatsToSeconds(note.start, state.bpm);
+            if (noteStartInClipSec >= clipDur) continue;
+
+            const noteDurSec = beatsToSeconds(note.duration, state.bpm);
+            const noteEndInClipSec = Math.min(clipDur, noteStartInClipSec + noteDurSec);
+            const noteAbsStart = clipStart + noteStartInClipSec;
+            const noteAbsEnd = state.isLooping
+              ? Math.min(state.loopEnd, clipStart + noteEndInClipSec)
+              : (clipStart + noteEndInClipSec);
+
+            if (noteAbsEnd <= currentTimelinePos + 0.002) {
+              midiLookaheadState.scheduledNoteKeys.add(noteKey);
+              continue;
+            }
+            if (noteAbsStart >= horizonTimeline) continue;
+
+            midiLookaheadState.scheduledNoteKeys.add(noteKey);
+
+            const isMidNoteSeek = noteAbsStart < currentTimelinePos;
+            const offsetIntoNoteSec = isMidNoteSeek ? (currentTimelinePos - noteAbsStart) : 0;
+            const gateDurationSec = Math.max(0.01, isMidNoteSeek ? (noteAbsEnd - currentTimelinePos) : (noteAbsEnd - noteAbsStart));
+            const noteStartCtxTime = isMidNoteSeek
+              ? ctxNow
+              : Math.max(ctxNow, state.playbackStartTimeInCtx + (noteAbsStart - state.playbackStartOffset));
+
+            scheduleMidiNoteVoice(ctx, clipGainEntry.clipGain, {
+              waveform,
+              adsr,
+              pitch: note.pitch,
+              velocity: note.velocity,
+              noteStartCtxTime,
+              gateDurationSec,
+              offsetIntoNoteSec,
+              voiceRegistry: state.activeMidiVoices,
+              clipId: clip.id
+            });
+          }
+        }
+      }
+
+      // Schedule clips starting from timelineOffset (Audio clips directly + MIDI lookahead scheduler)
       function scheduleClipsForPlayback(timelineOffset) {
         const ctx = state.audioCtx;
         const now = ctx.currentTime;
+
+        stopMidiLookaheadTimer();
 
         // Sample-accurate pan automation scheduling for each track
         state.tracks.forEach(track => {
@@ -7893,6 +8100,8 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         });
 
         state.clips.forEach(clip => {
+          if (isMidiClip(clip)) return; // MIDI clips are scheduled incrementally via lookahead
+
           const track = state.tracks.find(t => t.id === clip.trackId);
           if (!track) return;
 
@@ -7905,54 +8114,6 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           const timeIntoClip = Math.max(0, timelineOffset - clipStart);
           const timeUntilClip = Math.max(0, clipStart - timelineOffset);
           const scheduleWhen = now + timeUntilClip;
-
-          // Branch cleanly for MIDI clips vs Audio clips
-          if (isMidiClip(clip)) {
-            const notes = Array.isArray(clip.notes) ? clip.notes : [];
-            if (notes.length === 0) return;
-
-            let playDuration = clip.duration - timeIntoClip;
-            if (state.isLooping && clipStart + timeIntoClip + playDuration > state.loopEnd) {
-              playDuration = Math.max(0, state.loopEnd - (clipStart + timeIntoClip));
-            }
-            if (playDuration <= 0.005) return;
-
-            const clipGain = ctx.createGain();
-            applyClipFadeAndGainEnvelope(clipGain, clip, scheduleWhen, timeIntoClip, playDuration);
-            clipGain.connect(track.inputNode);
-            state.activeSources.push({ source: null, gainNode: clipGain, clipId: clip.id });
-
-            const waveform = getTrackSynthWaveform(track);
-            const adsr = getTrackSynthAdsr(track);
-            const windowEndInClip = timeIntoClip + playDuration;
-            const sortedNotes = notes.slice().sort((a, b) => (a.start - b.start) || (a.pitch - b.pitch));
-
-            sortedNotes.forEach(note => {
-              const noteStartInClipSec = beatsToSeconds(note.start, state.bpm);
-              const noteDurSec = beatsToSeconds(note.duration, state.bpm);
-              const noteEndInClipSec = Math.min(windowEndInClip, clip.duration, noteStartInClipSec + noteDurSec);
-              if (noteEndInClipSec <= timeIntoClip + 0.002) return;
-              if (noteStartInClipSec >= windowEndInClip) return;
-
-              const effectiveStartInClip = Math.max(timeIntoClip, noteStartInClipSec);
-              const offsetIntoNoteSec = Math.max(0, timeIntoClip - noteStartInClipSec);
-              const gateDurationSec = Math.max(0.01, noteEndInClipSec - effectiveStartInClip);
-              const noteStartCtxTime = now + Math.max(0, (clipStart + effectiveStartInClip) - timelineOffset);
-
-              scheduleMidiNoteVoice(ctx, clipGain, {
-                waveform,
-                adsr,
-                pitch: note.pitch,
-                velocity: note.velocity,
-                noteStartCtxTime,
-                gateDurationSec,
-                offsetIntoNoteSec,
-                voiceRegistry: state.activeMidiVoices,
-                clipId: clip.id
-              });
-            });
-            return;
-          }
 
           if (!clip.buffer) return;
 
@@ -7986,6 +8147,14 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           source.start(scheduleWhen, bufferOffset, playDuration);
           state.activeSources.push({ source, gainNode: clipGain, clipId: clip.id });
         });
+
+        // Kick off MIDI lookahead scheduling immediately for the first 0.15s window and poll every 25ms
+        scheduleMidiLookaheadTick(timelineOffset);
+        if (state.isPlaying) {
+          midiLookaheadState.timerId = setInterval(() => {
+            scheduleMidiLookaheadTick();
+          }, MIDI_LOOKAHEAD_INTERVAL_MS);
+        }
       }
 
       // Playback requestAnimationFrame Loop
@@ -8070,20 +8239,31 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           return;
         }
 
+        const midiClip = isMidiClip(original);
+        const origDurSec = getClipDurationSec(original);
         const relativeSplit = splitTimelineTime - original.startTimeInTimeline;
-        if (relativeSplit <= 0.05 || relativeSplit >= original.duration - 0.05) {
+        if (relativeSplit <= 0.05 || relativeSplit >= origDurSec - 0.05) {
           // Too close to edges
           return;
         }
 
         pushHistoryState('クリップ分割');
 
-        const midiClip = isMidiClip(original);
         let clip1Notes = undefined;
         let clip2Notes = undefined;
+        let clip1DurationBeats = undefined;
+        let clip2DurationBeats = undefined;
+        let clip1DurSec = relativeSplit;
+        let clip2DurSec = origDurSec - relativeSplit;
 
         if (midiClip) {
-          const splitBeats = secondsToBeats(relativeSplit, state.bpm);
+          const origBeats = getMidiClipDurationBeats(original);
+          const splitBeats = Math.max(0.03125, Math.min(origBeats - 0.03125, secondsToBeats(relativeSplit, state.bpm)));
+          clip1DurationBeats = splitBeats;
+          clip2DurationBeats = Math.max(0.03125, origBeats - splitBeats);
+          clip1DurSec = Math.max(0.05, beatsToSeconds(clip1DurationBeats, state.bpm));
+          clip2DurSec = Math.max(0.05, beatsToSeconds(clip2DurationBeats, state.bpm));
+
           const srcNotes = normalizeMidiNotes(original.notes || []);
           clip1Notes = [];
           clip2Notes = [];
@@ -8115,28 +8295,34 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           ...original,
           id: 'clip_' + Math.random().toString(36).substring(2, 9),
           type: midiClip ? 'midi' : 'audio',
-          duration: relativeSplit,
-          fadeIn: Math.min(original.fadeIn || 0, relativeSplit / 2),
+          duration: clip1DurSec,
+          fadeIn: Math.min(original.fadeIn || 0, clip1DurSec / 2),
           fadeOut: 0,
           demoRecipe: original.demoRecipe ? JSON.parse(JSON.stringify(original.demoRecipe)) : null,
           waveformSettings: original.waveformSettings ? { ...original.waveformSettings } : null
         };
-        if (midiClip) clip1.notes = clip1Notes;
+        if (midiClip) {
+          clip1.durationBeats = clip1DurationBeats;
+          clip1.notes = clip1Notes;
+        }
 
         // Part 2: Split point to end
         const clip2 = {
           ...original,
           id: 'clip_' + Math.random().toString(36).substring(2, 9),
           type: midiClip ? 'midi' : 'audio',
-          startTimeInTimeline: splitTimelineTime,
+          startTimeInTimeline: original.startTimeInTimeline + clip1DurSec,
           offsetInBuffer: midiClip ? 0 : (original.offsetInBuffer + relativeSplit),
-          duration: original.duration - relativeSplit,
+          duration: clip2DurSec,
           fadeIn: 0,
-          fadeOut: Math.min(original.fadeOut || 0, (original.duration - relativeSplit) / 2),
+          fadeOut: Math.min(original.fadeOut || 0, clip2DurSec / 2),
           demoRecipe: original.demoRecipe ? JSON.parse(JSON.stringify(original.demoRecipe)) : null,
           waveformSettings: original.waveformSettings ? { ...original.waveformSettings } : null
         };
-        if (midiClip) clip2.notes = clip2Notes;
+        if (midiClip) {
+          clip2.durationBeats = clip2DurationBeats;
+          clip2.notes = clip2Notes;
+        }
 
         // Replace original with the two parts
         state.clips.splice(clipIdx, 1, clip1, clip2);
@@ -8229,7 +8415,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         // Simulate mix peak across active timeline
         let maxEndTime = 0;
         state.clips.forEach(c => {
-          maxEndTime = Math.max(maxEndTime, c.startTimeInTimeline + c.duration);
+          maxEndTime = Math.max(maxEndTime, c.startTimeInTimeline + getClipDurationSec(c));
         });
 
         if (maxEndTime <= 0) return;
@@ -8246,7 +8432,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
             const track = state.tracks[i];
             if (track.mute || (anySolo && !track.solo)) continue;
 
-            const trackClips = state.clips.filter(c => c.trackId === track.id && c.buffer && t >= c.startTimeInTimeline && t < (c.startTimeInTimeline + c.duration));
+            const trackClips = state.clips.filter(c => c.trackId === track.id && c.buffer && t >= c.startTimeInTimeline && t < (c.startTimeInTimeline + getClipDurationSec(c)));
             for (let j = 0; j < trackClips.length; j++) {
               const clip = trackClips[j];
               const clipTime = t - clip.startTimeInTimeline;
@@ -8303,12 +8489,13 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           return null;
         }
 
-        // Determine total export duration (include MIDI release tails)
+        // Determine total export duration (derive MIDI duration from durationBeats & current BPM + release tail)
         let maxEndTime = 0;
         state.clips.forEach(c => {
           const track = state.tracks.find(t => t.id === c.trackId);
+          const clipDur = getClipDurationSec(c, state.bpm);
           const relTail = isMidiClip(c) ? getTrackSynthAdsr(track).release : 0;
-          maxEndTime = Math.max(maxEndTime, c.startTimeInTimeline + c.duration + relTail);
+          maxEndTime = Math.max(maxEndTime, c.startTimeInTimeline + clipDur + relTail);
         });
         const exportDuration = Math.ceil(maxEndTime + 1.0); // 1s tail
         const sampleRate = 44100;
@@ -8317,9 +8504,10 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         const OfflineContextClass = window.OfflineAudioContext || window.webkitOfflineAudioContext;
         const offlineCtx = new OfflineContextClass(2, totalSamples, sampleRate);
 
-        // Build Master Bus on offline context
+        // Build Master Bus on offline context (ignore live DIM/MUTE; always use raw state.masterVolume)
         const offMasterGain = offlineCtx.createGain();
-        offMasterGain.gain.setValueAtTime(getEffectiveMasterGain(), 0);
+        const rawMasterVolume = state.masterVolume !== undefined ? Number(state.masterVolume) : 1.0;
+        offMasterGain.gain.setValueAtTime(rawMasterVolume, 0);
 
         const offCompressor = offlineCtx.createDynamicsCompressor();
         offCompressor.threshold.setValueAtTime(-12, 0);
@@ -8412,8 +8600,9 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         });
 
         const offlineMidiVoices = [];
+        const pendingOfflineMidiEvents = [];
 
-        // Schedule all linked Audio & MIDI clips into Offline Context
+        // Schedule all linked Audio clips and collect MIDI note events (using durationBeats * current BPM)
         state.clips.forEach(clip => {
           const inputNode = trackNodesMap.get(clip.trackId);
           const track = trackMetaMap.get(clip.trackId);
@@ -8423,11 +8612,12 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
             const notes = Array.isArray(clip.notes) ? clip.notes : [];
             if (notes.length === 0) return;
 
+            const clipDur = getClipDurationSec(clip, state.bpm);
             const clipGain = offlineCtx.createGain();
             const when = Math.max(0, clip.startTimeInTimeline);
             const targetGain = clip.gain !== undefined ? Number(clip.gain) : 1.0;
-            const effectiveFadeIn = Math.min(Math.max(0, Number(clip.fadeIn) || 0), clip.duration / 2);
-            const effectiveFadeOut = Math.min(Math.max(0, Number(clip.fadeOut) || 0), clip.duration / 2);
+            const effectiveFadeIn = Math.min(Math.max(0, Number(clip.fadeIn) || 0), clipDur / 2);
+            const effectiveFadeOut = Math.min(Math.max(0, Number(clip.fadeOut) || 0), clipDur / 2);
 
             if (effectiveFadeIn > 0.001) {
               clipGain.gain.setValueAtTime(0.0001, when);
@@ -8437,32 +8627,30 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
             }
 
             if (effectiveFadeOut > 0.001) {
-              const fadeOutStart = Math.max(when + effectiveFadeIn, when + clip.duration - effectiveFadeOut);
+              const fadeOutStart = Math.max(when + effectiveFadeIn, when + clipDur - effectiveFadeOut);
               clipGain.gain.setValueAtTime(targetGain, fadeOutStart);
-              clipGain.gain.linearRampToValueAtTime(0.0001, when + clip.duration);
+              clipGain.gain.linearRampToValueAtTime(0.0001, when + clipDur);
             }
 
             clipGain.connect(inputNode);
 
             const waveform = getTrackSynthWaveform(track);
             const adsr = getTrackSynthAdsr(track);
-            const sortedNotes = notes.slice().sort((a, b) => (a.start - b.start) || (a.pitch - b.pitch));
 
-            sortedNotes.forEach(note => {
+            notes.forEach(note => {
               const noteStartInClipSec = beatsToSeconds(note.start, state.bpm);
+              if (noteStartInClipSec >= clipDur) return;
               const noteDurSec = beatsToSeconds(note.duration, state.bpm);
-              if (noteStartInClipSec >= clip.duration) return;
-              const gateDurationSec = Math.max(0.01, Math.min(clip.duration - noteStartInClipSec, noteDurSec));
+              const gateDurationSec = Math.max(0.01, Math.min(clipDur - noteStartInClipSec, noteDurSec));
 
-              scheduleMidiNoteVoice(offlineCtx, clipGain, {
+              pendingOfflineMidiEvents.push({
+                clipGain,
                 waveform,
                 adsr,
                 pitch: note.pitch,
                 velocity: note.velocity,
                 noteStartCtxTime: when + noteStartInClipSec,
                 gateDurationSec,
-                offsetIntoNoteSec: 0,
-                voiceRegistry: offlineMidiVoices,
                 clipId: clip.id
               });
             });
@@ -8506,6 +8694,23 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           clipGain.connect(inputNode);
           source.start(when, bufferOffset, playDuration);
         });
+
+        // Schedule offline MIDI notes in chronological order so finished voices are pruned and polyphony only checks active voices
+        pendingOfflineMidiEvents.sort((a, b) => (a.noteStartCtxTime - b.noteStartCtxTime) || (a.pitch - b.pitch));
+        for (let i = 0; i < pendingOfflineMidiEvents.length; i++) {
+          const ev = pendingOfflineMidiEvents[i];
+          scheduleMidiNoteVoice(offlineCtx, ev.clipGain, {
+            waveform: ev.waveform,
+            adsr: ev.adsr,
+            pitch: ev.pitch,
+            velocity: ev.velocity,
+            noteStartCtxTime: ev.noteStartCtxTime,
+            gateDurationSec: ev.gateDurationSec,
+            offsetIntoNoteSec: 0,
+            voiceRegistry: offlineMidiVoices,
+            clipId: ev.clipId
+          });
+        }
 
         return await offlineCtx.startRendering();
       }
@@ -8776,10 +8981,11 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           gainDbDisplay = (dbVal >= 0 ? '+' : '') + dbVal.toFixed(1);
         }
 
-        const clipPixelWidth = Math.round(selectedClip.duration * state.pixelsPerSecond);
+        const selectedClipDur = getClipDurationSec(selectedClip);
+        const clipPixelWidth = Math.round(selectedClipDur * state.pixelsPerSecond);
         const clipLod = midiClip ? null : getDynamicPeaksForClip(selectedClip, clipPixelWidth, state.pixelsPerSecond);
         const clipLodInfo = midiClip
-          ? `${(selectedClip.notes || []).length} ノート / ${secondsToBeats(selectedClip.duration, state.bpm).toFixed(2)} 拍`
+          ? `${(selectedClip.notes || []).length} ノート / ${getMidiClipDurationBeats(selectedClip).toFixed(2)} 拍`
           : (selectedClip.buffer
             ? `${clipLod.sampleInterval.toLocaleString()} smp/col (~${clipLod.intervalMs.toFixed(1)}ms)`
             : '音源未リンク');
@@ -8808,7 +9014,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
               <input id="prop-clip-name" type="text" value="${escapeHtml(selectedClip.name)}" ${clipLocked ? 'disabled' : ''} class="font-mono-num" style="flex: 1; min-width: 80px; background: #080c14; border: 1px solid var(--border-subtle); color: #f8fafc; font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px; outline: none; ${clipLocked ? 'opacity: 0.55; cursor: not-allowed;' : ''}"/>
               ${sourceBadgeHtml}
               <span class="font-mono-num" style="font-size: 10px; color: var(--text-muted); white-space: nowrap;">
-                開始: ${selectedClip.startTimeInTimeline.toFixed(2)}s | 長さ: ${selectedClip.duration.toFixed(2)}s
+                開始: ${selectedClip.startTimeInTimeline.toFixed(2)}s | 長さ: ${selectedClipDur.toFixed(2)}s
               </span>
             </div>
 
@@ -8858,7 +9064,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
                     フェードイン
                   </span>
                   <div style="display: flex; align-items: center; gap: 2px;">
-                    <input id="prop-fade-in-input" type="number" min="0" max="${(selectedClip.duration / 2).toFixed(2)}" step="0.05" value="${(selectedClip.fadeIn || 0).toFixed(2)}" class="prop-num-input font-mono-num" style="width: 42px; font-size: 10px;"/>
+                    <input id="prop-fade-in-input" type="number" min="0" max="${(selectedClipDur / 2).toFixed(2)}" step="0.05" value="${(selectedClip.fadeIn || 0).toFixed(2)}" class="prop-num-input font-mono-num" style="width: 42px; font-size: 10px;"/>
                     <span style="font-size: 9px; color: var(--text-dim);">秒</span>
                   </div>
                 </div>
@@ -8878,7 +9084,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
                     フェードアウト
                   </span>
                   <div style="display: flex; align-items: center; gap: 2px;">
-                    <input id="prop-fade-out-input" type="number" min="0" max="${(selectedClip.duration / 2).toFixed(2)}" step="0.05" value="${(selectedClip.fadeOut || 0).toFixed(2)}" class="prop-num-input font-mono-num" style="width: 42px; font-size: 10px;"/>
+                    <input id="prop-fade-out-input" type="number" min="0" max="${(selectedClipDur / 2).toFixed(2)}" step="0.05" value="${(selectedClip.fadeOut || 0).toFixed(2)}" class="prop-num-input font-mono-num" style="width: 42px; font-size: 10px;"/>
                     <span style="font-size: 9px; color: var(--text-dim);">秒</span>
                   </div>
                 </div>
@@ -9016,7 +9222,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         // Fade in & Fade out
         const fadeInInput = document.getElementById('prop-fade-in-input');
         const applyFadeIn = (val, pushHistory = false) => {
-          const maxFade = selectedClip.duration / 2;
+          const maxFade = getClipDurationSec(selectedClip) / 2;
           const num = Math.max(0, Math.min(maxFade, parseFloat(val) || 0));
           if (pushHistory && Math.abs((selectedClip.fadeIn || 0) - num) > 0.001) {
             pushHistoryState('フェードイン調整');
@@ -9030,7 +9236,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
         const fadeOutInput = document.getElementById('prop-fade-out-input');
         const applyFadeOut = (val, pushHistory = false) => {
-          const maxFade = selectedClip.duration / 2;
+          const maxFade = getClipDurationSec(selectedClip) / 2;
           const num = Math.max(0, Math.min(maxFade, parseFloat(val) || 0));
           if (pushHistory && Math.abs((selectedClip.fadeOut || 0) - num) > 0.001) {
             pushHistoryState('フェードアウト調整');
@@ -9127,6 +9333,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         const gainBadge = gainDb !== null ? `<span class="clip-gain-badge" style="background: rgba(0,0,0,0.65); border: 1px solid rgba(255,255,255,0.18); border-radius: 3px; padding: 0 4px; color: ${parseFloat(gainDb) > 0 ? '#34d399' : '#fbbf24'}; font-size: 9px; font-weight: 700; flex-shrink: 0;">${parseFloat(gainDb) > 0 ? '+' : ''}${gainDb}dB</span>` : '';
         const midiBadge = midiClip ? `<span style="background: rgba(76, 29, 149, 0.85); border: 1px solid #8b5cf6; border-radius: 3px; padding: 0 4px; color: #ede9fe; font-size: 9px; font-weight: 700; flex-shrink: 0;">🎹 ${(clip.notes || []).length}</span>` : '';
         const unlinkedBadge = isUnlinked ? `<span style="background: #451a03; border: 1px solid #f59e0b; border-radius: 3px; padding: 0 4px; color: #fde68a; font-size: 9px; font-weight: 700; flex-shrink: 0;">⚠ 未リンク</span>` : '';
+        const clipDurSec = getClipDurationSec(clip);
         header.innerHTML = `
           <div style="display: flex; align-items: center; gap: 4px; overflow: hidden; min-width: 0;">
             ${lockIcon}
@@ -9135,7 +9342,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
             ${unlinkedBadge}
             ${gainBadge}
           </div>
-          <span class="font-mono-num" style="font-size: 10px; opacity: 0.8; flex-shrink: 0;">${clip.duration.toFixed(2)}s</span>
+          <span class="font-mono-num" style="font-size: 10px; opacity: 0.8; flex-shrink: 0;">${clipDurSec.toFixed(2)}s</span>
         `;
       }
 
@@ -9222,19 +9429,20 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
       function updateClipFadeHandlesPosition(clip) {
         const clipEl = document.getElementById(clip.id);
         if (!clipEl) return;
-        const width = Math.max(12, clip.duration * state.pixelsPerSecond);
+        const clipDur = getClipDurationSec(clip);
+        const width = Math.max(12, clipDur * state.pixelsPerSecond);
         const fadeInHandle = clipEl.querySelector('.clip-fade-handle-in');
         const fadeOutHandle = clipEl.querySelector('.clip-fade-handle-out');
-        const maxFade = clip.duration / 2;
+        const maxFade = clipDur / 2;
         if (fadeInHandle) {
           const fi = Math.max(0, Math.min(maxFade, Number(clip.fadeIn) || 0));
-          const fiPx = (fi / clip.duration) * width;
+          const fiPx = (fi / clipDur) * width;
           fadeInHandle.style.left = fi > 0.001 ? `${Math.max(0, Math.min(width - 14, fiPx - 7))}px` : '0px';
           fadeInHandle.title = `フェードイン: ${fi.toFixed(2)}s (ドラッグで調整)`;
         }
         if (fadeOutHandle) {
           const fo = Math.max(0, Math.min(maxFade, Number(clip.fadeOut) || 0));
-          const foPx = (fo / clip.duration) * width;
+          const foPx = (fo / clipDur) * width;
           fadeOutHandle.style.right = fo > 0.001 ? `${Math.max(0, Math.min(width - 14, foPx - 7))}px` : '0px';
           fadeOutHandle.title = `フェードアウト: ${fo.toFixed(2)}s (ドラッグで調整)`;
         }
@@ -9688,7 +9896,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
                 return;
               }
               const trackClips = state.clips.filter(c => c.trackId === track.id);
-              const lastEnd = trackClips.reduce((m, c) => Math.max(m, c.startTimeInTimeline + c.duration), 0);
+              const lastEnd = trackClips.reduce((m, c) => Math.max(m, c.startTimeInTimeline + getClipDurationSec(c)), 0);
               const targetStart = trackClips.length === 0 ? Math.max(0, snapTime(state.currentPlayheadTime)) : snapTime(lastEnd);
               pushHistoryState('MIDIクリップ作成');
               const created = createMidiClip(track.id, targetStart, 4, []);
@@ -9848,7 +10056,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         // Adjust timeline total width and height based on content and tracks
         let maxTime = 16.0; // minimum 16s
         state.clips.forEach(c => {
-          maxTime = Math.max(maxTime, c.startTimeInTimeline + c.duration + 4.0);
+          maxTime = Math.max(maxTime, c.startTimeInTimeline + getClipDurationSec(c) + 4.0);
         });
         const timelineWidth = Math.max(2400, maxTime * state.pixelsPerSecond);
 
@@ -10546,8 +10754,9 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         el.className = `audio-clip ${midiClip ? 'midi-clip' : ''} ${state.selectedClipId === clip.id ? 'selected' : ''} ${isUnlinked ? 'unlinked' : ''} ${locked ? 'locked-clip' : ''}`;
         el.id = clip.id;
 
+        const clipDur = getClipDurationSec(clip);
         const leftX = clip.startTimeInTimeline * state.pixelsPerSecond;
-        const width = Math.max(12, clip.duration * state.pixelsPerSecond);
+        const width = Math.max(12, clipDur * state.pixelsPerSecond);
         el.style.left = `${leftX}px`;
         el.style.width = `${width}px`;
         el.style.borderColor = clip.id === state.selectedClipId ? '#60a5fa' : (isUnlinked ? '#f59e0b' : track.color.hex);
@@ -10569,7 +10778,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
             ${unlinkedBadge}
             ${gainBadge}
           </div>
-          <span class="font-mono-num" style="font-size: 10px; opacity: 0.8; flex-shrink: 0;">${clip.duration.toFixed(2)}s</span>
+          <span class="font-mono-num" style="font-size: 10px; opacity: 0.8; flex-shrink: 0;">${clipDur.toFixed(2)}s</span>
         `;
         el.appendChild(header);
 
@@ -10587,10 +10796,10 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         el.appendChild(rightHandle);
 
         // Top-Left & Top-Right Corner Fade Handles
-        const fadeInSec = Math.max(0, Math.min(clip.duration / 2, Number(clip.fadeIn) || 0));
-        const fadeOutSec = Math.max(0, Math.min(clip.duration / 2, Number(clip.fadeOut) || 0));
-        const fadeInPx = (fadeInSec / clip.duration) * width;
-        const fadeOutPx = (fadeOutSec / clip.duration) * width;
+        const fadeInSec = Math.max(0, Math.min(clipDur / 2, Number(clip.fadeIn) || 0));
+        const fadeOutSec = Math.max(0, Math.min(clipDur / 2, Number(clip.fadeOut) || 0));
+        const fadeInPx = (fadeInSec / clipDur) * width;
+        const fadeOutPx = (fadeOutSec / clipDur) * width;
 
         const leftFadeHandle = document.createElement('div');
         leftFadeHandle.className = 'clip-fade-handle clip-fade-handle-in';
@@ -10691,9 +10900,9 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         ctx.fillStyle = bgGrad;
         ctx.fillRect(0, 0, w, h);
 
-        // Vertical beat lines inside MIDI clip
-        const beatSec = getBeatDurationSec(state.bpm);
-        const totalBeats = Math.max(0.25, clip.duration / beatSec);
+        // Vertical beat lines inside MIDI clip (using beat-based duration)
+        const clipDur = getClipDurationSec(clip);
+        const totalBeats = Math.max(0.25, getMidiClipDurationBeats(clip));
         ctx.strokeStyle = 'rgba(148, 163, 184, 0.14)';
         ctx.lineWidth = 1;
         for (let b = 1; b < totalBeats; b++) {
@@ -10742,8 +10951,8 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
         // Fade-in & Fade-out corner overlays on MIDI clips as well
         if (clip.fadeIn && clip.fadeIn > 0.001) {
-          const fadeInSec = Math.min(clip.fadeIn, clip.duration / 2);
-          const fadeInPx = (fadeInSec / clip.duration) * w;
+          const fadeInSec = Math.min(clip.fadeIn, clipDur / 2);
+          const fadeInPx = (fadeInSec / clipDur) * w;
           ctx.fillStyle = 'rgba(2, 132, 199, 0.28)';
           ctx.beginPath();
           ctx.moveTo(0, 0);
@@ -10753,8 +10962,8 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           ctx.fill();
         }
         if (clip.fadeOut && clip.fadeOut > 0.001) {
-          const fadeOutSec = Math.min(clip.fadeOut, clip.duration / 2);
-          const fadeOutPx = (fadeOutSec / clip.duration) * w;
+          const fadeOutSec = Math.min(clip.fadeOut, clipDur / 2);
+          const fadeOutPx = (fadeOutSec / clipDur) * w;
           const startX = w - fadeOutPx;
           ctx.fillStyle = 'rgba(217, 119, 6, 0.28)';
           ctx.beginPath();
@@ -11077,8 +11286,9 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         const startMouseX = e.clientX;
         const initialStart = clip.startTimeInTimeline;
         const initialOffset = clip.offsetInBuffer;
-        const initialDur = clip.duration;
         const midiClip = isMidiClip(clip);
+        const initialDur = getClipDurationSec(clip);
+        const initialDurBeats = midiClip ? getMidiClipDurationBeats(clip) : 0;
         const initialNotes = midiClip ? normalizeMidiNotes(clip.notes || []) : null;
         const maxBufferDur = midiClip ? Infinity : (clip.buffer ? clip.buffer.duration : Math.max(initialOffset + initialDur + 60, 120));
         let hasTrimmed = false;
@@ -11102,9 +11312,11 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
             if (midiClip) {
               if (newStart >= 0 && newDuration > 0.1) {
                 const deltaBeats = secondsToBeats(delta, state.bpm);
+                const newDurBeats = Math.max(0.0625, initialDurBeats - deltaBeats);
                 clip.startTimeInTimeline = newStart;
                 clip.offsetInBuffer = 0;
-                clip.duration = newDuration;
+                clip.durationBeats = newDurBeats;
+                clip.duration = Math.max(0.05, beatsToSeconds(newDurBeats, state.bpm));
                 clip.notes = (initialNotes || [])
                   .map(n => ({ ...n, start: n.start - deltaBeats }))
                   .filter(n => n.start + n.duration > 0.01)
@@ -11122,18 +11334,25 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
             // Trim right
             let newEnd = snapTime(initialStart + initialDur + deltaTime);
             let newDuration = newEnd - initialStart;
-            if (newDuration > 0.05 && (midiClip || (initialOffset + newDuration) <= maxBufferDur + 0.01)) {
+            if (midiClip) {
+              if (newDuration > 0.05) {
+                const newDurBeats = Math.max(0.0625, secondsToBeats(newDuration, state.bpm));
+                clip.durationBeats = newDurBeats;
+                clip.duration = Math.max(0.05, beatsToSeconds(newDurBeats, state.bpm));
+              }
+            } else if (newDuration > 0.05 && (initialOffset + newDuration) <= maxBufferDur + 0.01) {
               clip.duration = newDuration;
             }
           }
 
-          if (clip.fadeIn > clip.duration / 2) clip.fadeIn = Math.max(0, clip.duration / 2);
-          if (clip.fadeOut > clip.duration / 2) clip.fadeOut = Math.max(0, clip.duration / 2);
+          const currentClipDur = getClipDurationSec(clip);
+          if (clip.fadeIn > currentClipDur / 2) clip.fadeIn = Math.max(0, currentClipDur / 2);
+          if (clip.fadeOut > currentClipDur / 2) clip.fadeOut = Math.max(0, currentClipDur / 2);
 
           const clipEl = document.getElementById(clip.id);
           if (clipEl) {
             clipEl.style.left = `${clip.startTimeInTimeline * state.pixelsPerSecond}px`;
-            clipEl.style.width = `${Math.max(12, clip.duration * state.pixelsPerSecond)}px`;
+            clipEl.style.width = `${Math.max(12, currentClipDur * state.pixelsPerSecond)}px`;
             const canvas = clipEl.querySelector('canvas');
             const track = state.tracks.find(t => t.id === clip.trackId);
             if (canvas && track) drawClipWaveform(canvas, clip, track);
@@ -11165,7 +11384,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           return;
         }
         const startMouseX = e.clientX;
-        const maxFade = clip.duration / 2;
+        const maxFade = getClipDurationSec(clip) / 2;
         const initialFade = side === 'in'
           ? Math.max(0, Math.min(maxFade, Number(clip.fadeIn) || 0))
           : Math.max(0, Math.min(maxFade, Number(clip.fadeOut) || 0));
@@ -11627,6 +11846,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         const val = parseInt(e.target.value, 10);
         if (val >= 40 && val <= 240) {
           state.bpm = val;
+          syncAllMidiClipDurations(state.bpm);
           renderRuler();
           renderGrid();
           renderTimeline();
@@ -11870,7 +12090,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
       function getPianoRollTotalBeats(clip) {
         if (!clip) return 8;
-        const clipBeats = Math.max(1, secondsToBeats(clip.duration, state.bpm));
+        const clipBeats = Math.max(1, getMidiClipDurationBeats(clip));
         let maxNoteEnd = 0;
         (clip.notes || []).forEach(n => {
           maxNoteEnd = Math.max(maxNoteEnd, (Number(n.start) || 0) + (Number(n.duration) || 0));
@@ -12055,7 +12275,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         ctx.fillStyle = '#080c17';
         ctx.fillRect(0, 0, w, h);
 
-        const clipEndBeat = secondsToBeats(clip.duration, state.bpm);
+        const clipEndBeat = getMidiClipDurationBeats(clip);
         const clipEndX = clipEndBeat * pianoRollState.pixelsPerBeat;
         ctx.fillStyle = 'rgba(139, 92, 246, 0.14)';
         ctx.fillRect(0, 0, clipEndX, h);
@@ -12143,8 +12363,8 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           ctx.stroke();
         }
 
-        // 3. Shade region beyond clip duration
-        const clipBeats = secondsToBeats(clip.duration, state.bpm);
+        // 3. Shade region beyond clip duration (in beats)
+        const clipBeats = getMidiClipDurationBeats(clip);
         const clipEndX = clipBeats * ppb;
         if (clipEndX < w) {
           ctx.fillStyle = 'rgba(2, 6, 23, 0.55)';
@@ -12195,7 +12415,8 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         });
 
         // 5. Playhead inside clip when playhead falls inside this MIDI clip
-        if (state.currentPlayheadTime >= clip.startTimeInTimeline && state.currentPlayheadTime <= clip.startTimeInTimeline + clip.duration) {
+        const clipDur = getClipDurationSec(clip);
+        if (state.currentPlayheadTime >= clip.startTimeInTimeline && state.currentPlayheadTime <= clip.startTimeInTimeline + clipDur) {
           const beatOffset = secondsToBeats(state.currentPlayheadTime - clip.startTimeInTimeline, state.bpm);
           const px = beatOffset * ppb;
           ctx.strokeStyle = '#fde047';
@@ -12251,15 +12472,18 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
       function commitPianoRollClipUpdate(clip, pushLabel = null) {
         if (!clip) return;
-        // Expand clip duration cleanly if notes extend beyond clip boundary
+        // Expand clip durationBeats cleanly if notes extend beyond clip boundary
         let maxNoteEndBeats = 0;
         (clip.notes || []).forEach(n => {
           maxNoteEndBeats = Math.max(maxNoteEndBeats, n.start + n.duration);
         });
-        const maxNoteEndSec = beatsToSeconds(maxNoteEndBeats, state.bpm);
-        if (maxNoteEndSec > clip.duration + 0.005) {
-          clip.duration = maxNoteEndSec;
+        const currentBeats = getMidiClipDurationBeats(clip);
+        if (maxNoteEndBeats > currentBeats + 0.001) {
+          clip.durationBeats = maxNoteEndBeats;
+        } else {
+          clip.durationBeats = currentBeats;
         }
+        syncMidiClipDuration(clip, state.bpm);
         if (pushLabel) {
           // caller already pushed history before mutation if needed
         }
@@ -12496,7 +12720,8 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
             return;
           }
           pushHistoryState('MIDIクリップ延長');
-          clip.duration = clip.duration + beatsToSeconds(4, state.bpm);
+          clip.durationBeats = getMidiClipDurationBeats(clip) + 4;
+          syncMidiClipDuration(clip, state.bpm);
           commitPianoRollClipUpdate(clip);
           renderTimeline();
           showToast('MIDIクリップを +1小節 (4拍) 延長しました');
@@ -12958,13 +13183,16 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
             })),
             clips: state.clips.map(c => {
               const clipIsMidi = isMidiClip(c);
+              const clipDurBeats = clipIsMidi ? getMidiClipDurationBeats(c) : undefined;
+              const clipDurSec = clipIsMidi ? getClipDurationSec(c) : (Number(c.duration) || 0.1);
               return {
                 id: c.id,
                 type: clipIsMidi ? 'midi' : 'audio',
                 trackId: c.trackId,
                 name: c.name,
                 startTimeInTimeline: Number(c.startTimeInTimeline) || 0,
-                duration: Number(c.duration) || 0.1,
+                duration: clipDurSec,
+                durationBeats: clipDurBeats,
                 offsetInBuffer: clipIsMidi ? 0 : (Number(c.offsetInBuffer) || 0),
                 gain: c.gain !== undefined ? Number(c.gain) : 1.0,
                 fadeIn: c.fadeIn !== undefined ? Math.max(0, Number(c.fadeIn) || 0) : 0,
@@ -13418,16 +13646,23 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
             const isIncomingMidi = cData.type === 'midi' || cData.clipType === 'midi' || isMidiTrack(targetTrack);
             if (isIncomingMidi) {
+              const fallbackDurSec = Math.max(0.05, Number(cData.duration) || 1.0);
+              const parsedDurBeats = Number(cData.durationBeats);
+              const resolvedDurBeats = (Number.isFinite(parsedDurBeats) && parsedDurBeats > 0)
+                ? parsedDurBeats
+                : Math.max(0.0625, secondsToBeats(fallbackDurSec, state.bpm));
+              const resolvedDurSec = Math.max(0.05, beatsToSeconds(resolvedDurBeats, state.bpm));
               addClipToTrack(
                 targetTrack.id,
                 cData.name || 'MIDI Pattern',
                 null,
                 Math.max(0, Number(cData.startTimeInTimeline) || 0),
                 0,
-                Math.max(0.05, Number(cData.duration) || 1.0),
+                resolvedDurSec,
                 {
                   id: cData.id,
                   type: 'midi',
+                  durationBeats: resolvedDurBeats,
                   gain: cData.gain !== undefined ? Number(cData.gain) : 1.0,
                   fadeIn: cData.fadeIn !== undefined ? Math.max(0, Number(cData.fadeIn) || 0) : 0,
                   fadeOut: cData.fadeOut !== undefined ? Math.max(0, Number(cData.fadeOut) || 0) : 0,
