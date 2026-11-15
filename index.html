@@ -1519,6 +1519,185 @@
         opacity: 1;
         transform: translateY(0);
       }
+
+      /* MIDI Track & Piano Roll Editor Styles */
+      .add-track-popover {
+        position: absolute;
+        top: calc(100% + 5px);
+        right: 0;
+        width: 215px;
+        background: #0b111e;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        box-shadow: 0 14px 32px rgba(0, 0, 0, 0.85);
+        padding: 5px;
+        z-index: 160;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .add-track-popover.hidden {
+        display: none;
+      }
+      .add-track-option-btn {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        width: 100%;
+        padding: 7px 9px;
+        border-radius: 6px;
+        border: 1px solid #1e293b;
+        background: #0f172a;
+        color: #f1f5f9;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        text-align: left;
+        transition: all 0.12s;
+      }
+      .add-track-option-btn:hover:not(:disabled) {
+        background: #17253d;
+        border-color: #38bdf8;
+      }
+      .add-track-option-btn.midi:hover:not(:disabled) {
+        background: #1d1538;
+        border-color: #a78bfa;
+      }
+      .add-track-option-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .midi-track-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        font-size: 9px;
+        font-weight: 800;
+        padding: 1px 5px;
+        border-radius: 4px;
+        background: #2e1065;
+        border: 1px solid #8b5cf6;
+        color: #ddd6fe;
+        flex-shrink: 0;
+        letter-spacing: 0.3px;
+      }
+      .midi-synth-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        background: #0c111a;
+        padding: 3px 6px;
+        border-radius: 4px;
+        border: 1px solid #2b214a;
+      }
+      .midi-waveform-select {
+        background: #161030;
+        color: #ddd6fe;
+        border: 1px solid #5b21b6;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 600;
+        padding: 1px 6px;
+        outline: none;
+        cursor: pointer;
+        height: 20px;
+      }
+      .midi-waveform-select:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      .btn-add-midi-clip {
+        height: 20px;
+        padding: 0 7px;
+        font-size: 9.5px;
+        font-weight: 700;
+        border-radius: 4px;
+        border: 1px solid #7c3aed;
+        background: #3b0764;
+        color: #ede9fe;
+        cursor: pointer;
+        transition: all 0.12s;
+        white-space: nowrap;
+      }
+      .btn-add-midi-clip:hover:not(:disabled) {
+        background: #5b21b6;
+        border-color: #a78bfa;
+      }
+      .btn-add-midi-clip:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      #piano-roll-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(3, 7, 18, 0.86);
+        backdrop-filter: blur(6px);
+        z-index: 235;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #piano-roll-modal.waveform-popover-hidden {
+        display: none;
+      }
+      .piano-roll-window {
+        background: #0b111e;
+        border: 1px solid #4c1d95;
+        border-radius: 12px;
+        width: 960px;
+        max-width: 95vw;
+        height: 640px;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.92);
+      }
+      .piano-roll-body {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 72px 1fr;
+        grid-template-rows: 26px 1fr;
+        overflow: hidden;
+        background: #070b14;
+      }
+      .piano-roll-corner {
+        background: #0f1626;
+        border-right: 1px solid #1e293b;
+        border-bottom: 1px solid #1e293b;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 9px;
+        font-weight: 700;
+        color: #a78bfa;
+      }
+      .piano-roll-ruler-scroll {
+        overflow: hidden;
+        background: #0f1626;
+        border-bottom: 1px solid #1e293b;
+        position: relative;
+      }
+      .piano-roll-keys-scroll {
+        overflow: hidden;
+        background: #0d1322;
+        border-right: 1px solid #1e293b;
+        position: relative;
+      }
+      .piano-roll-grid-scroll {
+        overflow: auto;
+        position: relative;
+        background: #080d18;
+      }
+      #piano-roll-canvas {
+        display: block;
+      }
+      #piano-roll-keys-canvas {
+        display: block;
+        cursor: pointer;
+      }
     </style>
   </head>
   <body>
@@ -1840,13 +2019,25 @@
       <!-- Left Track Controls Sidebar -->
       <aside id="tracks-sidebar">
         <div class="tracks-sidebar-header">
-          <div style="display: flex; align-items: center; gap: 6px;">
+          <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
             <span>TRACK MIXER</span>
-            <span id="track-count-badge" class="font-mono-num" title="編集可能なオーディオトラック数上限 (Web版)">0/8</span>
+            <span id="track-count-badge" class="font-mono-num" title="編集可能なトラック数上限 (Web版)">0/8</span>
           </div>
-          <button id="btn-add-track" class="btn" style="height: 24px; padding: 0 8px; font-size: 11px;">
-            + トラック追加
-          </button>
+          <div style="position: relative; flex-shrink: 0;">
+            <button id="btn-add-track" class="btn" style="height: 24px; padding: 0 8px; font-size: 11px;">
+              + トラック追加 ▾
+            </button>
+            <div id="add-track-type-popover" class="add-track-popover hidden">
+              <button id="btn-add-audio-track" class="add-track-option-btn">
+                <span>🎵 オーディオトラック</span>
+                <span id="add-audio-limit-label" class="font-mono-num" style="font-size: 10px; color: #7dd3fc;">0/8</span>
+              </button>
+              <button id="btn-add-midi-track" class="add-track-option-btn midi">
+                <span>🎹 MIDI トラック</span>
+                <span id="add-midi-limit-label" class="font-mono-num" style="font-size: 10px; color: #c4b5fd;">0/50</span>
+              </button>
+            </div>
+          </div>
         </div>
         <div id="track-controls-container">
           <!-- Track control cards will be dynamically rendered here -->
@@ -2288,15 +2479,15 @@
           <div style="width: 32px; height: 32px; border-radius: 8px; background: #451a03; border: 1px solid #f59e0b; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;">🔒</div>
           <div>
             <div style="font-weight: 700; color: #fef3c7; font-size: 14px;">編集可能トラック数の上限について (Web版)</div>
-            <div style="font-size: 11px; color: #d97706; font-weight: 600;">9番目以降のトラックはロック状態で開きます</div>
+            <div id="track-limit-warning-subtitle" style="font-size: 11px; color: #d97706; font-weight: 600;">上限を超えたトラックはロック状態で開きます</div>
           </div>
         </div>
         <div style="padding: 16px 18px; font-size: 12px; color: #e2e8f0; line-height: 1.65;">
           <p id="track-limit-warning-message" style="margin: 0 0 10px 0;"></p>
           <div style="background: #080d18; border: 1px solid #1e293b; border-radius: 8px; padding: 10px 12px; font-size: 11px; color: #94a3b8; line-height: 1.55;">
-            <div>・9番目以降のトラックは削除されず、タイムラインとミキサーに表示されます</div>
-            <div>・再生、WAV書き出し、プロジェクト保存(JSON)にはすべてのトラックが含まれます</div>
-            <div>・ロック中のトラック（クリップ移動/分割/トリム、音量/パン/EQ/FX変更など）は編集できません</div>
+            <div>・上限を超えたトラックは削除されず、タイムラインとミキサーに表示されます</div>
+            <div>・再生、WAV/MP3書き出し、プロジェクト保存(JSON)にはすべてのトラックが含まれます</div>
+            <div>・ロック中のトラック（クリップ移動/分割/トリム/MIDI編集、音量/パン/EQ/FX変更など）は編集できません</div>
           </div>
         </div>
         <div style="display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid #1e293b; background: #080c16;">
@@ -2326,6 +2517,73 @@
         <div style="display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid #1e293b; background: #080c16;">
           <button id="btn-cancel-demo-overwrite" class="btn" style="height: 30px; padding: 0 14px; font-size: 11px;">キャンセル</button>
           <button id="btn-confirm-demo-overwrite" class="btn" style="height: 30px; padding: 0 14px; font-size: 11px; background: #b91c1c; border-color: #ef4444; color: #ffffff; font-weight: 700;">すべて置き換えて生成</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Piano Roll Editor Modal -->
+    <div id="piano-roll-modal" class="waveform-popover-hidden">
+      <div class="piano-roll-window">
+        <!-- Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-bottom: 1px solid #1e293b; background: #0e1326; gap: 10px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+            <div style="width: 30px; height: 30px; border-radius: 8px; background: #2e1065; border: 1px solid #8b5cf6; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0;">🎹</div>
+            <div style="min-width: 0;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span id="piano-roll-title" style="font-weight: 700; color: #f8fafc; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px;">MIDI Clip</span>
+                <span id="piano-roll-track-badge" style="font-size: 10px; background: #1e1b4b; color: #c4b5fd; border: 1px solid #4c1d95; border-radius: 4px; padding: 1px 6px;">MIDI Track</span>
+                <span id="piano-roll-lock-badge" style="display: none; font-size: 10px; background: #272013; color: #fbbf24; border: 1px solid #92400e; border-radius: 4px; padding: 1px 6px; font-weight: 700;">🔒 ロック中（閲覧のみ）</span>
+              </div>
+              <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">
+                空白クリック: 追加 / ノートクリック: 削除 / ドラッグ: 移動 / 右端ドラッグ: 長さ変更
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0;">
+            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #cbd5e1;">
+              <span style="color: #94a3b8; font-weight: 600;">波形:</span>
+              <select id="piano-roll-waveform" class="midi-waveform-select">
+                <option value="sine">sine</option>
+                <option value="triangle">triangle</option>
+                <option value="square">square</option>
+                <option value="sawtooth">sawtooth</option>
+              </select>
+            </label>
+            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #cbd5e1;">
+              <span style="color: #94a3b8; font-weight: 600;">スナップ:</span>
+              <select id="piano-roll-snap" class="font-mono-num" style="background: #0d121c; border: 1px solid #334155; color: #f8fafc; border-radius: 4px; font-size: 11px; padding: 2px 6px; outline: none; cursor: pointer;">
+                <option value="1">1/4 拍 (4分)</option>
+                <option value="0.5">1/8 拍 (8分)</option>
+                <option value="0.25" selected>1/16 拍 (16分)</option>
+              </select>
+            </label>
+            <span id="piano-roll-note-count" class="font-mono-num" style="font-size: 10px; color: #a78bfa; background: #1e1b4b; border: 1px solid #4338ca; padding: 2px 7px; border-radius: 4px;">0 ノート</span>
+            <button id="btn-close-piano-roll" style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 16px; padding: 4px 8px;" title="閉じる (Esc)">✕</button>
+          </div>
+        </div>
+
+        <!-- Body: Keys + Grid -->
+        <div class="piano-roll-body">
+          <div class="piano-roll-corner">C2-C7</div>
+          <div id="piano-roll-ruler-scroll" class="piano-roll-ruler-scroll">
+            <canvas id="piano-roll-ruler-canvas"></canvas>
+          </div>
+          <div id="piano-roll-keys-scroll" class="piano-roll-keys-scroll">
+            <canvas id="piano-roll-keys-canvas"></canvas>
+          </div>
+          <div id="piano-roll-grid-scroll" class="piano-roll-grid-scroll">
+            <canvas id="piano-roll-canvas"></canvas>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; border-top: 1px solid #1e293b; background: #080c16; font-size: 11px; color: #94a3b8;">
+          <div id="piano-roll-status-readout" class="font-mono-num">音階: -- | 拍: 0.00 | Velocity: 100</div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <button id="btn-piano-roll-extend-bar" class="prop-preset-btn" style="padding: 3px 10px; font-size: 10px; background: #172133; border-color: #334155; color: #e2e8f0;" title="クリップの長さを +1小節 (4拍) 延長">+ 1小節延長</button>
+            <button id="btn-close-piano-roll-bottom" class="btn" style="height: 26px; padding: 0 12px; font-size: 11px;">閉じる</button>
+          </div>
         </div>
       </div>
     </div>
@@ -2654,11 +2912,116 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
        */
 
       // --- Edition Track Limit Configuration ---
-      // Web版は8トラックまで編集可能（インストール版等で制限解除する場合は Infinity または null に変更）
+      // Web版はオーディオ8トラック / MIDI 50トラックまで編集可能
       const MAX_EDITABLE_TRACKS = 8;
+      const MAX_EDITABLE_MIDI_TRACKS = 50;
+      const MAX_MIDI_POLYPHONY = 128;
+      const MIDI_WAVEFORMS = ['sine', 'triangle', 'square', 'sawtooth'];
+      const DEFAULT_MIDI_ADSR = { attack: 0.012, decay: 0.14, sustain: 0.65, release: 0.16 };
+      const PIANO_ROLL_MIN_MIDI = 36; // C2
+      const PIANO_ROLL_MAX_MIDI = 96; // C7
+      const MIDI_NOTE_DEFAULT_VELOCITY = 100;
 
-      function hasTrackLimit() {
-        return typeof MAX_EDITABLE_TRACKS === 'number' && Number.isFinite(MAX_EDITABLE_TRACKS) && MAX_EDITABLE_TRACKS >= 0;
+      function getTrackType(track) {
+        return (track && (track.type === 'midi' || track.trackType === 'midi')) ? 'midi' : 'audio';
+      }
+
+      function isMidiTrack(track) {
+        return getTrackType(track) === 'midi';
+      }
+
+      function isMidiClip(clip) {
+        if (!clip) return false;
+        if (clip.type === 'midi' || clip.clipType === 'midi') return true;
+        if (clip.type === 'audio') return false;
+        const tr = state.tracks.find(t => t.id === clip.trackId);
+        return !!(tr && isMidiTrack(tr));
+      }
+
+      function normalizeMidiWaveform(wf) {
+        return MIDI_WAVEFORMS.includes(wf) ? wf : 'sawtooth';
+      }
+
+      function normalizeMidiAdsr(adsr) {
+        const src = (adsr && typeof adsr === 'object') ? adsr : DEFAULT_MIDI_ADSR;
+        return {
+          attack: Math.max(0.002, Math.min(2.0, Number(src.attack !== undefined ? src.attack : DEFAULT_MIDI_ADSR.attack) || 0.012)),
+          decay: Math.max(0.005, Math.min(2.0, Number(src.decay !== undefined ? src.decay : DEFAULT_MIDI_ADSR.decay) || 0.14)),
+          sustain: Math.max(0.01, Math.min(1.0, Number(src.sustain !== undefined ? src.sustain : DEFAULT_MIDI_ADSR.sustain) || 0.65)),
+          release: Math.max(0.01, Math.min(3.0, Number(src.release !== undefined ? src.release : DEFAULT_MIDI_ADSR.release) || 0.16))
+        };
+      }
+
+      function getTrackSynthWaveform(track) {
+        return normalizeMidiWaveform(track && (track.synthWaveform || track.midiWaveform));
+      }
+
+      function getTrackSynthAdsr(track) {
+        return normalizeMidiAdsr(track && track.synthAdsr);
+      }
+
+      function getBeatDurationSec(bpm = state.bpm) {
+        const safeBpm = Math.max(40, Math.min(240, Number(bpm) || 120));
+        return 60 / safeBpm;
+      }
+
+      function beatsToSeconds(beats, bpm = state.bpm) {
+        return (Number(beats) || 0) * getBeatDurationSec(bpm);
+      }
+
+      function secondsToBeats(seconds, bpm = state.bpm) {
+        const beatSec = getBeatDurationSec(bpm);
+        return beatSec > 0 ? (Number(seconds) || 0) / beatSec : 0;
+      }
+
+      function midiPitchToFreq(pitch) {
+        const clamped = Math.max(0, Math.min(127, Number(pitch) || 60));
+        return 440 * Math.pow(2, (clamped - 69) / 12);
+      }
+
+      const MIDI_NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+      function midiPitchToName(pitch) {
+        const p = Math.max(0, Math.min(127, Math.round(Number(pitch) || 60)));
+        const name = MIDI_NOTE_NAMES[p % 12];
+        const octave = Math.floor(p / 12) - 1;
+        return `${name}${octave}`;
+      }
+
+      function normalizeMidiNote(n, defaultDurBeats = 0.25) {
+        const pitch = Math.max(0, Math.min(127, Math.round(Number(n && n.pitch !== undefined ? n.pitch : 60) || 0)));
+        const start = Math.max(0, Number(n && n.start) || 0);
+        const duration = Math.max(0.03125, Number(n && n.duration) || defaultDurBeats);
+        const rawVel = (n && n.velocity !== undefined && n.velocity !== null) ? Number(n.velocity) : MIDI_NOTE_DEFAULT_VELOCITY;
+        const velocity = Math.max(0, Math.min(127, Math.round(Number.isFinite(rawVel) ? rawVel : MIDI_NOTE_DEFAULT_VELOCITY)));
+        return {
+          id: (n && n.id) || ('mn_' + Math.random().toString(36).substring(2, 10)),
+          pitch,
+          start,
+          duration,
+          velocity
+        };
+      }
+
+      function normalizeMidiNotes(notes) {
+        if (!Array.isArray(notes)) return [];
+        return notes.map(n => normalizeMidiNote(n));
+      }
+
+      function getTrackTypeLimit(trackType = 'audio') {
+        return trackType === 'midi' ? MAX_EDITABLE_MIDI_TRACKS : MAX_EDITABLE_TRACKS;
+      }
+
+      function hasTrackLimit(trackType = 'audio') {
+        const limit = getTrackTypeLimit(trackType);
+        return typeof limit === 'number' && Number.isFinite(limit) && limit >= 0;
+      }
+
+      function getAudioTracks() {
+        return state.tracks.filter(t => getTrackType(t) !== 'midi');
+      }
+
+      function getMidiTracks() {
+        return state.tracks.filter(t => getTrackType(t) === 'midi');
       }
 
       function getTrackIndexById(trackId) {
@@ -2666,8 +3029,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         return state.tracks.findIndex(t => t.id === trackId);
       }
 
-      function isTrackLocked(trackOrIdOrIndex) {
-        if (!hasTrackLimit()) return false;
+      function getTrackTypeOrdinal(trackOrIdOrIndex) {
         let idx = -1;
         if (typeof trackOrIdOrIndex === 'number') {
           idx = trackOrIdOrIndex;
@@ -2676,52 +3038,103 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         } else if (trackOrIdOrIndex && typeof trackOrIdOrIndex === 'object') {
           idx = getTrackIndexById(trackOrIdOrIndex.id);
         }
-        return idx >= MAX_EDITABLE_TRACKS;
+        if (idx < 0 || idx >= state.tracks.length) return -1;
+        const targetTrack = state.tracks[idx];
+        const targetType = getTrackType(targetTrack);
+        let ordinal = 0;
+        for (let i = 0; i < idx; i++) {
+          if (getTrackType(state.tracks[i]) === targetType) {
+            ordinal++;
+          }
+        }
+        return ordinal;
+      }
+
+      function isTrackLocked(trackOrIdOrIndex) {
+        let idx = -1;
+        if (typeof trackOrIdOrIndex === 'number') {
+          idx = trackOrIdOrIndex;
+        } else if (typeof trackOrIdOrIndex === 'string') {
+          idx = getTrackIndexById(trackOrIdOrIndex);
+        } else if (trackOrIdOrIndex && typeof trackOrIdOrIndex === 'object') {
+          idx = getTrackIndexById(trackOrIdOrIndex.id);
+        }
+        if (idx < 0 || idx >= state.tracks.length) return false;
+        const trackType = getTrackType(state.tracks[idx]);
+        if (!hasTrackLimit(trackType)) return false;
+        const limit = getTrackTypeLimit(trackType);
+        const ordinal = getTrackTypeOrdinal(idx);
+        return ordinal >= limit;
       }
 
       function isClipOnLockedTrack(clip) {
         return !!(clip && isTrackLocked(clip.trackId));
       }
 
-      function canAddMoreEditableTracks() {
-        if (!hasTrackLimit()) return true;
-        return state.tracks.length < MAX_EDITABLE_TRACKS;
+      function canAddMoreEditableTracks(trackType = 'audio') {
+        if (!hasTrackLimit(trackType)) return true;
+        const count = trackType === 'midi' ? getMidiTracks().length : getAudioTracks().length;
+        return count < getTrackTypeLimit(trackType);
       }
 
       function isTargetFxLocked(targetId) {
         return targetId !== 'master' && isTrackLocked(targetId);
       }
 
-      function getTrackLimitReachedMessage() {
+      function getTrackLimitReachedMessage(trackType = 'audio') {
+        if (trackType === 'midi') {
+          return `Web版で編集できるMIDIトラックは${MAX_EDITABLE_MIDI_TRACKS}トラックまでです`;
+        }
         return `Web版で編集できるのは${MAX_EDITABLE_TRACKS}トラックまでです`;
       }
 
       function updateTrackLimitIndicator() {
         const badge = document.getElementById('track-count-badge');
         const addBtn = document.getElementById('btn-add-track');
-        const total = state.tracks.length;
-        const atLimit = !canAddMoreEditableTracks();
+        const audioOptBtn = document.getElementById('btn-add-audio-track');
+        const midiOptBtn = document.getElementById('btn-add-midi-track');
+        const audioLimitLabel = document.getElementById('add-audio-limit-label');
+        const midiLimitLabel = document.getElementById('add-midi-limit-label');
+
+        const audioCount = getAudioTracks().length;
+        const midiCount = getMidiTracks().length;
+        const audioAtLimit = !canAddMoreEditableTracks('audio');
+        const midiAtLimit = !canAddMoreEditableTracks('midi');
 
         if (badge) {
-          if (hasTrackLimit()) {
-            const lockedCount = Math.max(0, total - MAX_EDITABLE_TRACKS);
-            badge.textContent = lockedCount > 0
-              ? `${MAX_EDITABLE_TRACKS}/${MAX_EDITABLE_TRACKS} (+${lockedCount}🔒)`
-              : `${total}/${MAX_EDITABLE_TRACKS}`;
-            badge.classList.toggle('at-limit', atLimit);
-            badge.title = lockedCount > 0
-              ? `編集可能: ${MAX_EDITABLE_TRACKS}トラック / ロック中: ${lockedCount}トラック`
-              : `編集可能なトラック数 (${total}/${MAX_EDITABLE_TRACKS})`;
-          } else {
-            badge.textContent = `${total}`;
-            badge.classList.remove('at-limit');
-          }
+          const lockedAudio = hasTrackLimit('audio') ? Math.max(0, audioCount - MAX_EDITABLE_TRACKS) : 0;
+          const lockedMidi = hasTrackLimit('midi') ? Math.max(0, midiCount - MAX_EDITABLE_MIDI_TRACKS) : 0;
+          const audioPart = hasTrackLimit('audio')
+            ? (lockedAudio > 0 ? `${MAX_EDITABLE_TRACKS}/${MAX_EDITABLE_TRACKS} (+${lockedAudio}🔒)` : `${audioCount}/${MAX_EDITABLE_TRACKS}`)
+            : `${audioCount}`;
+          const midiPart = hasTrackLimit('midi')
+            ? (lockedMidi > 0 ? `M:${MAX_EDITABLE_MIDI_TRACKS}/${MAX_EDITABLE_MIDI_TRACKS} (+${lockedMidi}🔒)` : `M:${midiCount}/${MAX_EDITABLE_MIDI_TRACKS}`)
+            : `M:${midiCount}`;
+
+          badge.textContent = midiCount > 0 ? `${audioPart} · ${midiPart}` : audioPart;
+          badge.classList.toggle('at-limit', audioAtLimit || midiAtLimit);
+          badge.title = `オーディオ: ${audioCount}/${MAX_EDITABLE_TRACKS}${lockedAudio > 0 ? ` (ロック${lockedAudio})` : ''} / MIDI: ${midiCount}/${MAX_EDITABLE_MIDI_TRACKS}${lockedMidi > 0 ? ` (ロック${lockedMidi})` : ''}`;
+        }
+
+        if (audioLimitLabel) {
+          audioLimitLabel.textContent = `${audioCount}/${MAX_EDITABLE_TRACKS}`;
+          audioLimitLabel.style.color = audioAtLimit ? '#fbbf24' : '#7dd3fc';
+        }
+        if (midiLimitLabel) {
+          midiLimitLabel.textContent = `${midiCount}/${MAX_EDITABLE_MIDI_TRACKS}`;
+          midiLimitLabel.style.color = midiAtLimit ? '#fbbf24' : '#c4b5fd';
+        }
+        if (audioOptBtn) {
+          audioOptBtn.title = audioAtLimit ? getTrackLimitReachedMessage('audio') : '新しいオーディオトラックを追加';
+        }
+        if (midiOptBtn) {
+          midiOptBtn.title = midiAtLimit ? getTrackLimitReachedMessage('midi') : '新しいMIDIトラックを追加';
         }
         if (addBtn) {
-          addBtn.classList.toggle('at-limit', atLimit);
-          addBtn.title = atLimit
-            ? getTrackLimitReachedMessage()
-            : '新しいオーディオトラックを追加';
+          addBtn.classList.toggle('at-limit', audioAtLimit && midiAtLimit);
+          addBtn.title = (audioAtLimit && midiAtLimit)
+            ? 'オーディオ/MIDIともにWeb版の編集上限に達しています'
+            : 'オーディオまたはMIDIトラックを追加';
         }
       }
 
@@ -2770,6 +3183,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         tracks: [],
         clips: [],
         activeSources: [], // active BufferSource instances
+        activeMidiVoices: [], // active Web Audio synth OscillatorNode voices (capped at MAX_MIDI_POLYPHONY)
         dragState: null,
         peakCache: new WeakMap(),
         dynamicPeakCache: new Map(),
@@ -2839,7 +3253,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
       function pruneUnusedAudioBufferCache() {
         const activeKeys = new Set();
         state.clips.forEach(c => {
-          if (c.demoRecipe) return;
+          if (c.demoRecipe || isMidiClip(c)) return;
           const key = c.sourceCacheKey || makeAudioFileCacheKey(
             c.sourceFileName || c.name,
             c.sourceFileSize,
@@ -5433,10 +5847,13 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           });
         }
 
+        const lockNoticeTargetTrack = isTargetLocked ? state.tracks.find(t => t.id === targetId) : null;
+        const lockNoticeLimit = lockNoticeTargetTrack && isMidiTrack(lockNoticeTargetTrack) ? MAX_EDITABLE_MIDI_TRACKS : MAX_EDITABLE_TRACKS;
+        const lockNoticeKind = lockNoticeTargetTrack && isMidiTrack(lockNoticeTargetTrack) ? 'MIDIトラック' : 'オーディオトラック';
         const lockNoticeBannerHtml = isTargetLocked ? `
           <div style="background: #22170a; border: 1px solid #92400e; color: #fbbf24; border-radius: 5px; padding: 4px 8px; font-size: 10px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
             <span>🔒</span>
-            <span>このトラック（${MAX_EDITABLE_TRACKS + 1}番目以降）はWeb版上限のためロックされています。閲覧と再生のみ有効です。</span>
+            <span>この${lockNoticeKind}（${lockNoticeLimit + 1}番目以降）はWeb版上限のためロックされています。閲覧と再生のみ有効です。</span>
           </div>
         ` : '';
 
@@ -5809,15 +6226,16 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         stereoSplitterNode.connect(rightAnalyserNode, 1);
       }
 
-      // Create a Track with complete signal chain
+      // Create a Track with complete signal chain (Audio or MIDI)
       function createTrack(name, colorIndex = 0, options = {}) {
-        if (!options.allowBeyondLimit && !canAddMoreEditableTracks()) {
-          showToast(getTrackLimitReachedMessage());
+        const trackType = (options.type === 'midi' || options.trackType === 'midi') ? 'midi' : 'audio';
+        if (!options.allowBeyondLimit && !canAddMoreEditableTracks(trackType)) {
+          showToast(getTrackLimitReachedMessage(trackType));
           return null;
         }
         const ctx = getAudioContext();
         const color = TRACK_COLORS[colorIndex % TRACK_COLORS.length];
-        const trackId = 'track_' + Math.random().toString(36).substring(2, 9);
+        const trackId = options.id || ('track_' + Math.random().toString(36).substring(2, 9));
 
         // 1. Input Node (where playing clips connect)
         const inputNode = ctx.createGain();
@@ -5864,6 +6282,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
         const track = {
           id: trackId,
+          type: trackType,
           name: name,
           color: color,
           volume: 1.0,
@@ -5873,6 +6292,8 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           eqLowGain: 0,
           eqMidGain: 0,
           eqHighGain: 0,
+          synthWaveform: normalizeMidiWaveform(options.synthWaveform),
+          synthAdsr: normalizeMidiAdsr(options.synthAdsr),
           fxList: [],
           panAutomation: [],
           panAutomationEnabled: true,
@@ -6229,6 +6650,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
       function ensureTrackAudioNodes(trackData) {
         let existing = state.tracks.find(t => t.id === trackData.id);
         if (existing) {
+          existing.type = getTrackType(trackData);
           existing.name = trackData.name;
           existing.color = trackData.color;
           existing.volume = trackData.volume;
@@ -6238,6 +6660,8 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           existing.eqLowGain = trackData.eqLowGain;
           existing.eqMidGain = trackData.eqMidGain;
           existing.eqHighGain = trackData.eqHighGain;
+          existing.synthWaveform = normalizeMidiWaveform(trackData.synthWaveform);
+          existing.synthAdsr = normalizeMidiAdsr(trackData.synthAdsr);
           existing.panAutomation = (trackData.panAutomation || []).map(p => ({ ...p }));
           existing.panAutomationEnabled = trackData.panAutomationEnabled !== undefined ? trackData.panAutomationEnabled : true;
           existing.showPanAutomation = !!trackData.showPanAutomation;
@@ -6298,6 +6722,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
         const track = {
           id: trackData.id,
+          type: getTrackType(trackData),
           name: trackData.name,
           color: trackData.color,
           volume: trackData.volume !== undefined ? trackData.volume : 1.0,
@@ -6307,6 +6732,8 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           eqLowGain: trackData.eqLowGain || 0,
           eqMidGain: trackData.eqMidGain || 0,
           eqHighGain: trackData.eqHighGain || 0,
+          synthWaveform: normalizeMidiWaveform(trackData.synthWaveform),
+          synthAdsr: normalizeMidiAdsr(trackData.synthAdsr),
           panAutomation: (trackData.panAutomation || []).map(p => ({ ...p })),
           panAutomationEnabled: trackData.panAutomationEnabled !== undefined ? trackData.panAutomationEnabled : true,
           showPanAutomation: !!trackData.showPanAutomation,
@@ -6331,10 +6758,11 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         return track;
       }
 
-      // Clone clips non-destructively preserving AudioBuffer reference & source metadata
+      // Clone clips non-destructively preserving AudioBuffer reference, source metadata & MIDI notes
       function cloneClips(clips) {
         return clips.map(c => ({
           id: c.id,
+          type: isMidiClip(c) ? 'midi' : 'audio',
           trackId: c.trackId,
           name: c.name,
           startTimeInTimeline: c.startTimeInTimeline,
@@ -6343,6 +6771,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           fadeIn: c.fadeIn,
           fadeOut: c.fadeOut,
           gain: c.gain,
+          notes: isMidiClip(c) ? normalizeMidiNotes(c.notes || []) : undefined,
           sourceFileName: c.sourceFileName || null,
           sourceFileSize: c.sourceFileSize !== undefined ? c.sourceFileSize : null,
           sourceLastModified: c.sourceLastModified !== undefined ? c.sourceLastModified : null,
@@ -6368,6 +6797,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
       function cloneTracks(tracks) {
         return tracks.map(t => ({
           id: t.id,
+          type: getTrackType(t),
           name: t.name,
           color: { ...t.color },
           volume: t.volume,
@@ -6377,6 +6807,8 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           eqLowGain: t.eqLowGain,
           eqMidGain: t.eqMidGain,
           eqHighGain: t.eqHighGain,
+          synthWaveform: getTrackSynthWaveform(t),
+          synthAdsr: getTrackSynthAdsr(t),
           fxList: cloneFxList(t.fxList),
           panAutomation: (t.panAutomation || []).map(p => ({ ...p })),
           panAutomationEnabled: t.panAutomationEnabled !== undefined ? t.panAutomationEnabled : true,
@@ -6458,6 +6890,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         updateDockTabs();
         updateHistoryButtons();
         if (typeof updateMissingAudioBadge === 'function') updateMissingAudioBadge();
+        if (typeof refreshOpenPianoRoll === 'function') refreshOpenPianoRoll();
         markProjectDirty();
       }
 
@@ -6913,42 +7346,82 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         showToast('デモトラック（4トラック・Synth Lead パンオートメーション付き）を配置しました！');
       }
 
-      // Add Clip Helper
+      // Add Clip Helper (Audio or MIDI)
       function addClipToTrack(trackId, name, buffer, startTimeInTimeline, offsetInBuffer, duration, options = {}) {
         const clipId = options.id || ('clip_' + Math.random().toString(36).substring(2, 9));
         const parsedFadeIn = options.fadeIn !== undefined ? Math.max(0, Number(options.fadeIn) || 0) : 0;
         const parsedFadeOut = options.fadeOut !== undefined ? Math.max(0, Number(options.fadeOut) || 0) : 0;
+        const targetTrack = state.tracks.find(t => t.id === trackId);
+        const clipType = (options.type === 'midi' || options.clipType === 'midi' || (targetTrack && isMidiTrack(targetTrack) && !buffer && !options.demoRecipe))
+          ? 'midi'
+          : 'audio';
+
         const clip = {
           id: clipId,
+          type: clipType,
           trackId: trackId,
           name: name,
           startTimeInTimeline: startTimeInTimeline,
-          offsetInBuffer: offsetInBuffer,
+          offsetInBuffer: clipType === 'midi' ? 0 : offsetInBuffer,
           duration: duration,
           fadeIn: parsedFadeIn,
           fadeOut: parsedFadeOut,
           gain: options.gain !== undefined ? options.gain : 1.0,
-          sourceFileName: options.sourceFileName || null,
-          sourceFileSize: options.sourceFileSize !== undefined ? options.sourceFileSize : null,
-          sourceLastModified: options.sourceLastModified !== undefined ? options.sourceLastModified : null,
-          sourceCacheKey: options.sourceCacheKey || null,
-          demoRecipe: options.demoRecipe ? JSON.parse(JSON.stringify(options.demoRecipe)) : null,
+          sourceFileName: clipType === 'midi' ? null : (options.sourceFileName || null),
+          sourceFileSize: clipType === 'midi' ? null : (options.sourceFileSize !== undefined ? options.sourceFileSize : null),
+          sourceLastModified: clipType === 'midi' ? null : (options.sourceLastModified !== undefined ? options.sourceLastModified : null),
+          sourceCacheKey: clipType === 'midi' ? null : (options.sourceCacheKey || null),
+          demoRecipe: clipType === 'midi' ? null : (options.demoRecipe ? JSON.parse(JSON.stringify(options.demoRecipe)) : null),
           waveformSettings: options.waveformSettings ? { ...options.waveformSettings } : { ...state.waveformSettings },
-          buffer: buffer || null
+          buffer: clipType === 'midi' ? null : (buffer || null)
         };
+        if (clipType === 'midi') {
+          clip.notes = normalizeMidiNotes(options.notes);
+        }
         state.clips.push(clip);
+        return clip;
+      }
+
+      function createMidiClip(trackId, startTimeInTimeline = 0, durationBeats = 4, notes = [], options = {}) {
+        const track = state.tracks.find(t => t.id === trackId);
+        if (!track || !isMidiTrack(track)) return null;
+        if (!options.allowLocked && isTrackLocked(track)) {
+          showToast('ロック中のトラックにはMIDIクリップを作成できません');
+          return null;
+        }
+        const safeBeats = Math.max(0.25, Number(durationBeats) || 4);
+        const durationSec = options.duration !== undefined
+          ? Math.max(0.1, Number(options.duration) || 1)
+          : Math.max(0.25, beatsToSeconds(safeBeats, state.bpm));
+        const existingMidiClips = state.clips.filter(c => c.trackId === track.id).length;
+        const clipName = options.name || `MIDI Pattern ${existingMidiClips + 1}`;
+        const clip = addClipToTrack(
+          track.id,
+          clipName,
+          null,
+          Math.max(0, Number(startTimeInTimeline) || 0),
+          0,
+          durationSec,
+          {
+            ...options,
+            type: 'midi',
+            notes: normalizeMidiNotes(notes)
+          }
+        );
+        if (!options.skipDirty) markProjectDirty();
         return clip;
       }
 
       // Duplicate Track (Settings, EQ, FX, Pan Automation, and all Clips sharing existing AudioBuffers)
       function duplicateTrack(sourceTrackId) {
-        if (!canAddMoreEditableTracks()) {
-          showToast(getTrackLimitReachedMessage());
-          return null;
-        }
         const sourceIdx = state.tracks.findIndex(t => t.id === sourceTrackId);
         if (sourceIdx === -1) return null;
         const sourceTrack = state.tracks[sourceIdx];
+        const srcType = getTrackType(sourceTrack);
+        if (!canAddMoreEditableTracks(srcType)) {
+          showToast(getTrackLimitReachedMessage(srcType));
+          return null;
+        }
         if (isTrackLocked(sourceIdx)) {
           showToast('ロック中のトラックは複製できません');
           return null;
@@ -6972,6 +7445,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
         const newTrack = ensureTrackAudioNodes({
           id: newTrackId,
+          type: srcType,
           name: `${sourceTrack.name} (Copy)`,
           color: sourceTrack.color ? { ...sourceTrack.color } : { ...TRACK_COLORS[sourceIdx % TRACK_COLORS.length] },
           volume: sourceTrack.volume !== undefined ? Number(sourceTrack.volume) : 1.0,
@@ -6981,6 +7455,8 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           eqLowGain: Number(sourceTrack.eqLowGain) || 0,
           eqMidGain: Number(sourceTrack.eqMidGain) || 0,
           eqHighGain: Number(sourceTrack.eqHighGain) || 0,
+          synthWaveform: getTrackSynthWaveform(sourceTrack),
+          synthAdsr: getTrackSynthAdsr(sourceTrack),
           fxList: clonedFxList,
           panAutomation: clonedPanAutomation,
           panAutomationEnabled: sourceTrack.panAutomationEnabled !== undefined ? !!sourceTrack.panAutomationEnabled : true,
@@ -6993,14 +7469,17 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         // Duplicate all clips on this track sharing existing AudioBuffer references (no re-decode)
         const sourceClips = state.clips.filter(c => c.trackId === sourceTrack.id);
         sourceClips.forEach(c => {
+          const midiClip = isMidiClip(c);
           addClipToTrack(
             newTrack.id,
             c.name,
-            c.buffer || null,
+            midiClip ? null : (c.buffer || null),
             c.startTimeInTimeline,
-            c.offsetInBuffer || 0,
+            midiClip ? 0 : (c.offsetInBuffer || 0),
             c.duration,
             {
+              type: midiClip ? 'midi' : 'audio',
+              notes: midiClip ? normalizeMidiNotes(c.notes) : undefined,
               fadeIn: c.fadeIn !== undefined ? c.fadeIn : 0,
               fadeOut: c.fadeOut !== undefined ? c.fadeOut : 0,
               gain: c.gain !== undefined ? c.gain : 1.0,
@@ -7025,7 +7504,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         return newTrack;
       }
 
-      // Duplicate Clip immediately after original on same track (shares existing AudioBuffer)
+      // Duplicate Clip immediately after original on same track (shares existing AudioBuffer or clones MIDI notes)
       function duplicateClip(clipId) {
         const original = state.clips.find(c => c.id === clipId);
         if (!original) {
@@ -7040,14 +7519,17 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         pushHistoryState('クリップ複製');
 
         const newStart = Math.max(0, original.startTimeInTimeline + original.duration);
+        const midiClip = isMidiClip(original);
         const duplicated = addClipToTrack(
           original.trackId,
           original.name,
-          original.buffer || null,
+          midiClip ? null : (original.buffer || null),
           newStart,
-          original.offsetInBuffer || 0,
+          midiClip ? 0 : (original.offsetInBuffer || 0),
           original.duration,
           {
+            type: midiClip ? 'midi' : 'audio',
+            notes: midiClip ? normalizeMidiNotes(original.notes) : undefined,
             fadeIn: original.fadeIn !== undefined ? original.fadeIn : 0,
             fadeOut: original.fadeOut !== undefined ? original.fadeOut : 0,
             gain: original.gain !== undefined ? original.gain : 1.0,
@@ -7077,6 +7559,180 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           return null;
         }
         return duplicateClip(state.selectedClipId);
+      }
+
+      // --- Built-in Web Audio Polyphonic MIDI Synth Engine (OscillatorNode + ADSR GainNode, 128-Voice Cap) ---
+      function enforceMidiPolyphonyLimit(registry, atCtxTime, maxVoices = MAX_MIDI_POLYPHONY) {
+        if (!Array.isArray(registry) || registry.length < maxVoices) return;
+        const overlapping = [];
+        for (let i = 0; i < registry.length; i++) {
+          const v = registry[i];
+          if (!v || v.stolen) continue;
+          if (v.endTime > atCtxTime && v.startTime <= atCtxTime + 0.002) {
+            overlapping.push(v);
+          }
+        }
+        while (overlapping.length >= maxVoices) {
+          const victim = overlapping.shift();
+          if (!victim) break;
+          victim.stolen = true;
+          try {
+            const stopAt = Math.max(atCtxTime, 0);
+            if (victim.gainNode && victim.gainNode.gain) {
+              if (typeof victim.gainNode.gain.cancelScheduledValues === 'function') {
+                victim.gainNode.gain.cancelScheduledValues(stopAt);
+              }
+              victim.gainNode.gain.setValueAtTime(0.0001, stopAt);
+            }
+            if (victim.osc && typeof victim.osc.stop === 'function') {
+              victim.osc.stop(stopAt + 0.004);
+            }
+          } catch (err) {}
+        }
+      }
+
+      function scheduleMidiNoteVoice(audioCtx, destNode, opts) {
+        if (!audioCtx || !destNode || !opts) return null;
+        const waveform = normalizeMidiWaveform(opts.waveform);
+        const adsr = normalizeMidiAdsr(opts.adsr);
+        const pitch = Math.max(0, Math.min(127, Math.round(Number(opts.pitch) || 60)));
+        const velocity = Math.max(0, Math.min(127, Number(opts.velocity !== undefined ? opts.velocity : MIDI_NOTE_DEFAULT_VELOCITY)));
+        if (velocity <= 0) return null;
+
+        const gateDurationSec = Math.max(0.01, Number(opts.gateDurationSec) || 0.1);
+        const offsetIntoNoteSec = Math.max(0, Number(opts.offsetIntoNoteSec) || 0);
+        const noteStartCtxTime = Math.max(0, Number(opts.noteStartCtxTime) || 0);
+        const extraGain = opts.extraGain !== undefined ? Math.max(0, Number(opts.extraGain) || 0) : 1.0;
+
+        const velNorm = Math.max(0.01, Math.min(1, velocity / 127));
+        const peakLevel = Math.max(0.0005, 0.24 * velNorm * extraGain);
+        const sustainLevel = Math.max(0.0002, peakLevel * adsr.sustain);
+        const releaseStart = noteStartCtxTime + gateDurationSec;
+        const releaseEnd = releaseStart + adsr.release;
+
+        if (Array.isArray(opts.voiceRegistry)) {
+          enforceMidiPolyphonyLimit(opts.voiceRegistry, noteStartCtxTime, MAX_MIDI_POLYPHONY);
+        }
+
+        const osc = audioCtx.createOscillator();
+        osc.type = waveform;
+        osc.frequency.setValueAtTime(midiPitchToFreq(pitch), noteStartCtxTime);
+
+        const voiceGain = audioCtx.createGain();
+        const g = voiceGain.gain;
+
+        // ADSR envelope (supports mid-note seeks via offsetIntoNoteSec)
+        if (offsetIntoNoteSec <= 0.001) {
+          g.setValueAtTime(0.0001, noteStartCtxTime);
+          const attackEnd = noteStartCtxTime + adsr.attack;
+          if (releaseStart <= attackEnd) {
+            const frac = Math.max(0.05, gateDurationSec / adsr.attack);
+            g.linearRampToValueAtTime(Math.max(0.0002, peakLevel * frac), releaseStart);
+          } else {
+            g.linearRampToValueAtTime(peakLevel, attackEnd);
+            const decayEnd = attackEnd + adsr.decay;
+            if (releaseStart <= decayEnd) {
+              const frac = (releaseStart - attackEnd) / adsr.decay;
+              const levelAtRelease = peakLevel + (sustainLevel - peakLevel) * frac;
+              g.linearRampToValueAtTime(Math.max(0.0002, levelAtRelease), releaseStart);
+            } else {
+              g.linearRampToValueAtTime(sustainLevel, decayEnd);
+              g.setValueAtTime(sustainLevel, releaseStart);
+            }
+          }
+        } else {
+          let startLevel = sustainLevel;
+          const remainingAttack = adsr.attack - offsetIntoNoteSec;
+          if (remainingAttack > 0) {
+            startLevel = Math.max(0.0002, peakLevel * (offsetIntoNoteSec / adsr.attack));
+            g.setValueAtTime(startLevel, noteStartCtxTime);
+            const attackEnd = noteStartCtxTime + remainingAttack;
+            if (releaseStart > attackEnd) {
+              g.linearRampToValueAtTime(peakLevel, attackEnd);
+              const decayEnd = attackEnd + adsr.decay;
+              if (releaseStart > decayEnd) {
+                g.linearRampToValueAtTime(sustainLevel, decayEnd);
+                g.setValueAtTime(sustainLevel, releaseStart);
+              } else {
+                g.linearRampToValueAtTime(sustainLevel, releaseStart);
+              }
+            } else {
+              g.linearRampToValueAtTime(peakLevel, releaseStart);
+            }
+          } else {
+            const intoDecay = offsetIntoNoteSec - adsr.attack;
+            if (intoDecay < adsr.decay) {
+              const frac = intoDecay / adsr.decay;
+              startLevel = peakLevel + (sustainLevel - peakLevel) * frac;
+              g.setValueAtTime(Math.max(0.0002, startLevel), noteStartCtxTime);
+              const decayEnd = noteStartCtxTime + (adsr.decay - intoDecay);
+              if (releaseStart > decayEnd) {
+                g.linearRampToValueAtTime(sustainLevel, decayEnd);
+                g.setValueAtTime(sustainLevel, releaseStart);
+              } else {
+                g.linearRampToValueAtTime(sustainLevel, releaseStart);
+              }
+            } else {
+              g.setValueAtTime(sustainLevel, noteStartCtxTime);
+              g.setValueAtTime(sustainLevel, releaseStart);
+            }
+          }
+        }
+
+        g.linearRampToValueAtTime(0.0001, releaseEnd);
+
+        osc.connect(voiceGain);
+        voiceGain.connect(destNode);
+
+        osc.start(noteStartCtxTime);
+        osc.stop(releaseEnd + 0.01);
+
+        const voiceRecord = {
+          osc,
+          gainNode: voiceGain,
+          clipId: opts.clipId || null,
+          startTime: noteStartCtxTime,
+          endTime: releaseEnd,
+          stolen: false
+        };
+
+        if (Array.isArray(opts.voiceRegistry)) {
+          opts.voiceRegistry.push(voiceRecord);
+          if (typeof osc.onended !== 'undefined' || osc.addEventListener) {
+            try {
+              osc.onended = () => {
+                voiceRecord.ended = true;
+                try { voiceGain.disconnect(); } catch (e) {}
+              };
+            } catch (e) {}
+          }
+        }
+        return voiceRecord;
+      }
+
+      function previewMidiNote(track, pitch, durationSec = 0.28, velocity = MIDI_NOTE_DEFAULT_VELOCITY) {
+        const ctx = getAudioContext();
+        if (ctx.state === 'suspended' && typeof ctx.resume === 'function') {
+          try { ctx.resume(); } catch (e) {}
+        }
+        const destNode = (track && track.inputNode) ? track.inputNode : masterGainNode;
+        if (!destNode) return null;
+
+        // Clean already-finished voices before auditioning
+        const now = ctx.currentTime;
+        state.activeMidiVoices = (state.activeMidiVoices || []).filter(v => v && !v.ended && !v.stolen && v.endTime > now - 0.05);
+
+        return scheduleMidiNoteVoice(ctx, destNode, {
+          waveform: getTrackSynthWaveform(track),
+          adsr: getTrackSynthAdsr(track),
+          pitch,
+          velocity,
+          noteStartCtxTime: now,
+          gateDurationSec: Math.max(0.06, Number(durationSec) || 0.25),
+          offsetIntoNoteSec: 0,
+          voiceRegistry: state.activeMidiVoices,
+          clipId: null
+        });
       }
 
       // --- Precise Playback Engine ---
@@ -7156,12 +7812,74 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
               item.gainNode.gain.cancelScheduledValues(ctx.currentTime);
               item.gainNode.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.005);
             }
-            item.source.stop(ctx.currentTime + 0.006);
+            if (item.source && typeof item.source.stop === 'function') {
+              item.source.stop(ctx.currentTime + 0.006);
+            }
           } catch (e) {
             // Already stopped
           }
         });
         state.activeSources = [];
+
+        (state.activeMidiVoices || []).forEach(v => {
+          if (!v || v.stolen) return;
+          v.stolen = true;
+          try {
+            if (v.gainNode && v.gainNode.gain) {
+              v.gainNode.gain.cancelScheduledValues(ctx.currentTime);
+              v.gainNode.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.005);
+            }
+            if (v.osc && typeof v.osc.stop === 'function') {
+              v.osc.stop(ctx.currentTime + 0.006);
+            }
+          } catch (e) {
+            // Already stopped
+          }
+        });
+        state.activeMidiVoices = [];
+      }
+
+      function applyClipFadeAndGainEnvelope(clipGain, clip, scheduleWhen, timeIntoClip, playDuration) {
+        const rawFadeIn = Math.max(0, Number(clip.fadeIn) || 0);
+        const rawFadeOut = Math.max(0, Number(clip.fadeOut) || 0);
+        const effectiveFadeIn = Math.min(rawFadeIn, clip.duration / 2);
+        const effectiveFadeOut = Math.min(rawFadeOut, clip.duration / 2);
+
+        const clipAbsoluteStart = scheduleWhen - timeIntoClip;
+        const clipAbsoluteEnd = clipAbsoluteStart + clip.duration;
+        const fadeInEndTime = clipAbsoluteStart + effectiveFadeIn;
+        const fadeOutStartTime = clipAbsoluteEnd - effectiveFadeOut;
+        const actualStopTime = scheduleWhen + playDuration;
+        const targetGain = clip.gain !== undefined ? Number(clip.gain) : 1.0;
+
+        if (effectiveFadeIn > 0.001 && timeIntoClip < effectiveFadeIn) {
+          const currentFrac = timeIntoClip / effectiveFadeIn;
+          const currentGain = Math.max(0.0001, targetGain * currentFrac);
+          clipGain.gain.setValueAtTime(currentGain, scheduleWhen);
+          if (actualStopTime >= fadeInEndTime) {
+            clipGain.gain.linearRampToValueAtTime(targetGain, fadeInEndTime);
+          } else {
+            const endFrac = (timeIntoClip + playDuration) / effectiveFadeIn;
+            clipGain.gain.linearRampToValueAtTime(Math.max(0.0001, targetGain * endFrac), actualStopTime);
+          }
+        } else if (effectiveFadeOut > 0.001 && timeIntoClip >= (clip.duration - effectiveFadeOut)) {
+          const timeRemaining = Math.max(0, clip.duration - timeIntoClip);
+          const currentFrac = timeRemaining / effectiveFadeOut;
+          const currentGain = Math.max(0.0001, targetGain * currentFrac);
+          clipGain.gain.setValueAtTime(currentGain, scheduleWhen);
+        } else {
+          clipGain.gain.setValueAtTime(targetGain, scheduleWhen);
+        }
+
+        if (effectiveFadeOut > 0.001 && actualStopTime > fadeOutStartTime) {
+          if (fadeOutStartTime > scheduleWhen) {
+            clipGain.gain.setValueAtTime(targetGain, fadeOutStartTime);
+          }
+          const rampEnd = Math.min(actualStopTime, clipAbsoluteEnd);
+          const remainingAtEnd = Math.max(0, clipAbsoluteEnd - rampEnd);
+          const targetEndGain = Math.max(0.0001, targetGain * (remainingAtEnd / effectiveFadeOut));
+          clipGain.gain.linearRampToValueAtTime(targetEndGain, rampEnd);
+        }
       }
 
       // Schedule clips starting from timelineOffset
@@ -7176,7 +7894,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
         state.clips.forEach(clip => {
           const track = state.tracks.find(t => t.id === clip.trackId);
-          if (!track || !clip.buffer) return;
+          if (!track) return;
 
           const clipStart = clip.startTimeInTimeline;
           const clipEnd = clipStart + clip.duration;
@@ -7184,12 +7902,63 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           // Check if clip is within playback range
           if (clipEnd <= timelineOffset) return;
 
-          const bufferDuration = clip.buffer.duration;
-          if (!Number.isFinite(bufferDuration) || bufferDuration <= 0) return;
-
           const timeIntoClip = Math.max(0, timelineOffset - clipStart);
           const timeUntilClip = Math.max(0, clipStart - timelineOffset);
           const scheduleWhen = now + timeUntilClip;
+
+          // Branch cleanly for MIDI clips vs Audio clips
+          if (isMidiClip(clip)) {
+            const notes = Array.isArray(clip.notes) ? clip.notes : [];
+            if (notes.length === 0) return;
+
+            let playDuration = clip.duration - timeIntoClip;
+            if (state.isLooping && clipStart + timeIntoClip + playDuration > state.loopEnd) {
+              playDuration = Math.max(0, state.loopEnd - (clipStart + timeIntoClip));
+            }
+            if (playDuration <= 0.005) return;
+
+            const clipGain = ctx.createGain();
+            applyClipFadeAndGainEnvelope(clipGain, clip, scheduleWhen, timeIntoClip, playDuration);
+            clipGain.connect(track.inputNode);
+            state.activeSources.push({ source: null, gainNode: clipGain, clipId: clip.id });
+
+            const waveform = getTrackSynthWaveform(track);
+            const adsr = getTrackSynthAdsr(track);
+            const windowEndInClip = timeIntoClip + playDuration;
+            const sortedNotes = notes.slice().sort((a, b) => (a.start - b.start) || (a.pitch - b.pitch));
+
+            sortedNotes.forEach(note => {
+              const noteStartInClipSec = beatsToSeconds(note.start, state.bpm);
+              const noteDurSec = beatsToSeconds(note.duration, state.bpm);
+              const noteEndInClipSec = Math.min(windowEndInClip, clip.duration, noteStartInClipSec + noteDurSec);
+              if (noteEndInClipSec <= timeIntoClip + 0.002) return;
+              if (noteStartInClipSec >= windowEndInClip) return;
+
+              const effectiveStartInClip = Math.max(timeIntoClip, noteStartInClipSec);
+              const offsetIntoNoteSec = Math.max(0, timeIntoClip - noteStartInClipSec);
+              const gateDurationSec = Math.max(0.01, noteEndInClipSec - effectiveStartInClip);
+              const noteStartCtxTime = now + Math.max(0, (clipStart + effectiveStartInClip) - timelineOffset);
+
+              scheduleMidiNoteVoice(ctx, clipGain, {
+                waveform,
+                adsr,
+                pitch: note.pitch,
+                velocity: note.velocity,
+                noteStartCtxTime,
+                gateDurationSec,
+                offsetIntoNoteSec,
+                voiceRegistry: state.activeMidiVoices,
+                clipId: clip.id
+              });
+            });
+            return;
+          }
+
+          if (!clip.buffer) return;
+
+          const bufferDuration = clip.buffer.duration;
+          if (!Number.isFinite(bufferDuration) || bufferDuration <= 0) return;
+
           const bufferOffset = Math.max(0, (clip.offsetInBuffer || 0) + timeIntoClip);
           if (bufferOffset >= bufferDuration) return;
 
@@ -7208,50 +7977,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
           // Individual clip gain with Fade In and Fade Out envelopes
           const clipGain = ctx.createGain();
-          const rawFadeIn = Math.max(0, Number(clip.fadeIn) || 0);
-          const rawFadeOut = Math.max(0, Number(clip.fadeOut) || 0);
-          const effectiveFadeIn = Math.min(rawFadeIn, clip.duration / 2);
-          const effectiveFadeOut = Math.min(rawFadeOut, clip.duration / 2);
-
-          const clipAbsoluteStart = scheduleWhen - timeIntoClip;
-          const clipAbsoluteEnd = clipAbsoluteStart + clip.duration;
-          const fadeInEndTime = clipAbsoluteStart + effectiveFadeIn;
-          const fadeOutStartTime = clipAbsoluteEnd - effectiveFadeOut;
-          const actualStopTime = scheduleWhen + playDuration;
-          const targetGain = clip.gain !== undefined ? Number(clip.gain) : 1.0;
-
-          if (effectiveFadeIn > 0.001 && timeIntoClip < effectiveFadeIn) {
-            // Started within fade-in phase
-            const currentFrac = timeIntoClip / effectiveFadeIn;
-            const currentGain = Math.max(0.0001, targetGain * currentFrac);
-            clipGain.gain.setValueAtTime(currentGain, scheduleWhen);
-            if (actualStopTime >= fadeInEndTime) {
-              clipGain.gain.linearRampToValueAtTime(targetGain, fadeInEndTime);
-            } else {
-              const endFrac = (timeIntoClip + playDuration) / effectiveFadeIn;
-              clipGain.gain.linearRampToValueAtTime(Math.max(0.0001, targetGain * endFrac), actualStopTime);
-            }
-          } else if (effectiveFadeOut > 0.001 && timeIntoClip >= (clip.duration - effectiveFadeOut)) {
-            // Started within fade-out phase
-            const timeRemaining = Math.max(0, clip.duration - timeIntoClip);
-            const currentFrac = timeRemaining / effectiveFadeOut;
-            const currentGain = Math.max(0.0001, targetGain * currentFrac);
-            clipGain.gain.setValueAtTime(currentGain, scheduleWhen);
-          } else {
-            // Started in sustain/body phase (or no fade)
-            clipGain.gain.setValueAtTime(targetGain, scheduleWhen);
-          }
-
-          // Schedule fade-out ramp if playback extends into fade-out window
-          if (effectiveFadeOut > 0.001 && actualStopTime > fadeOutStartTime) {
-            if (fadeOutStartTime > scheduleWhen) {
-              clipGain.gain.setValueAtTime(targetGain, fadeOutStartTime);
-            }
-            const rampEnd = Math.min(actualStopTime, clipAbsoluteEnd);
-            const remainingAtEnd = Math.max(0, clipAbsoluteEnd - rampEnd);
-            const targetEndGain = Math.max(0.0001, targetGain * (remainingAtEnd / effectiveFadeOut));
-            clipGain.gain.linearRampToValueAtTime(targetEndGain, rampEnd);
-          }
+          applyClipFadeAndGainEnvelope(clipGain, clip, scheduleWhen, timeIntoClip, playDuration);
 
           // Connect to track input node
           source.connect(clipGain);
@@ -7285,6 +8011,9 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
         if (state.tracks.some(t => t.showPanAutomation)) {
           drawAllActivePanAutomationCanvases();
+        }
+        if (typeof drawOpenPianoRollPlayhead === 'function') {
+          drawOpenPianoRollPlayhead();
         }
 
         requestAnimationFrame(playbackAnimationLoop);
@@ -7349,29 +8078,65 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
         pushHistoryState('クリップ分割');
 
+        const midiClip = isMidiClip(original);
+        let clip1Notes = undefined;
+        let clip2Notes = undefined;
+
+        if (midiClip) {
+          const splitBeats = secondsToBeats(relativeSplit, state.bpm);
+          const srcNotes = normalizeMidiNotes(original.notes || []);
+          clip1Notes = [];
+          clip2Notes = [];
+          srcNotes.forEach(n => {
+            const noteEnd = n.start + n.duration;
+            if (n.start < splitBeats - 0.001) {
+              const dur1 = Math.min(n.duration, splitBeats - n.start);
+              if (dur1 > 0.01) {
+                clip1Notes.push({ ...n, duration: dur1 });
+              }
+            }
+            if (noteEnd > splitBeats + 0.001) {
+              const start2 = Math.max(0, n.start - splitBeats);
+              const dur2 = n.start < splitBeats ? (noteEnd - splitBeats) : n.duration;
+              if (dur2 > 0.01) {
+                clip2Notes.push({
+                  ...n,
+                  id: 'mn_' + Math.random().toString(36).substring(2, 10),
+                  start: start2,
+                  duration: dur2
+                });
+              }
+            }
+          });
+        }
+
         // Part 1: Start to split point
         const clip1 = {
           ...original,
           id: 'clip_' + Math.random().toString(36).substring(2, 9),
+          type: midiClip ? 'midi' : 'audio',
           duration: relativeSplit,
           fadeIn: Math.min(original.fadeIn || 0, relativeSplit / 2),
           fadeOut: 0,
           demoRecipe: original.demoRecipe ? JSON.parse(JSON.stringify(original.demoRecipe)) : null,
           waveformSettings: original.waveformSettings ? { ...original.waveformSettings } : null
         };
+        if (midiClip) clip1.notes = clip1Notes;
 
         // Part 2: Split point to end
         const clip2 = {
           ...original,
           id: 'clip_' + Math.random().toString(36).substring(2, 9),
+          type: midiClip ? 'midi' : 'audio',
           startTimeInTimeline: splitTimelineTime,
-          offsetInBuffer: original.offsetInBuffer + relativeSplit,
+          offsetInBuffer: midiClip ? 0 : (original.offsetInBuffer + relativeSplit),
           duration: original.duration - relativeSplit,
           fadeIn: 0,
           fadeOut: Math.min(original.fadeOut || 0, (original.duration - relativeSplit) / 2),
           demoRecipe: original.demoRecipe ? JSON.parse(JSON.stringify(original.demoRecipe)) : null,
           waveformSettings: original.waveformSettings ? { ...original.waveformSettings } : null
         };
+        if (midiClip) clip2.notes = clip2Notes;
 
         // Replace original with the two parts
         state.clips.splice(clipIdx, 1, clip1, clip2);
@@ -7389,6 +8154,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
         renderTimeline();
         updateClipPropertiesPanel();
+        if (typeof refreshOpenPianoRoll === 'function') refreshOpenPianoRoll();
         showToast('クリップを非破壊分割（スプリット）しました');
       }
 
@@ -7404,6 +8170,10 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         if (!track) return;
         if (isTrackLocked(track)) {
           showToast('ロック中のトラックは音量調整できません');
+          return;
+        }
+        if (isMidiTrack(track)) {
+          showToast('MIDIトラックはシンセ音量のため手動フェーダーで調整してください');
           return;
         }
 
@@ -7526,16 +8296,19 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           return null;
         }
 
-        const linkedClips = state.clips.filter(c => !!c.buffer);
-        if (linkedClips.length === 0) {
-          showToast('書き出し可能な音源（リンク済みクリップ）がありません');
+        const linkedClips = state.clips.filter(c => !isMidiClip(c) && !!c.buffer);
+        const playableMidiClips = state.clips.filter(c => isMidiClip(c) && Array.isArray(c.notes) && c.notes.length > 0);
+        if (linkedClips.length === 0 && playableMidiClips.length === 0) {
+          showToast('書き出し可能な音源（リンク済みオーディオまたはMIDIノート）がありません');
           return null;
         }
 
-        // Determine total export duration
+        // Determine total export duration (include MIDI release tails)
         let maxEndTime = 0;
         state.clips.forEach(c => {
-          maxEndTime = Math.max(maxEndTime, c.startTimeInTimeline + c.duration);
+          const track = state.tracks.find(t => t.id === c.trackId);
+          const relTail = isMidiClip(c) ? getTrackSynthAdsr(track).release : 0;
+          maxEndTime = Math.max(maxEndTime, c.startTimeInTimeline + c.duration + relTail);
         });
         const exportDuration = Math.ceil(maxEndTime + 1.0); // 1s tail
         const sampleRate = 44100;
@@ -7571,6 +8344,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
         // Build each track chain in Offline Context
         const trackNodesMap = new Map();
+        const trackMetaMap = new Map();
         state.tracks.forEach(track => {
           const inputNode = offlineCtx.createGain();
           const eqLow = offlineCtx.createBiquadFilter();
@@ -7634,12 +8408,68 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           gainNode.connect(offMasterGain);
 
           trackNodesMap.set(track.id, inputNode);
+          trackMetaMap.set(track.id, track);
         });
 
-        // Schedule all linked clips into Offline Context
+        const offlineMidiVoices = [];
+
+        // Schedule all linked Audio & MIDI clips into Offline Context
         state.clips.forEach(clip => {
           const inputNode = trackNodesMap.get(clip.trackId);
-          if (!inputNode || !clip.buffer) return;
+          const track = trackMetaMap.get(clip.trackId);
+          if (!inputNode) return;
+
+          if (isMidiClip(clip)) {
+            const notes = Array.isArray(clip.notes) ? clip.notes : [];
+            if (notes.length === 0) return;
+
+            const clipGain = offlineCtx.createGain();
+            const when = Math.max(0, clip.startTimeInTimeline);
+            const targetGain = clip.gain !== undefined ? Number(clip.gain) : 1.0;
+            const effectiveFadeIn = Math.min(Math.max(0, Number(clip.fadeIn) || 0), clip.duration / 2);
+            const effectiveFadeOut = Math.min(Math.max(0, Number(clip.fadeOut) || 0), clip.duration / 2);
+
+            if (effectiveFadeIn > 0.001) {
+              clipGain.gain.setValueAtTime(0.0001, when);
+              clipGain.gain.linearRampToValueAtTime(targetGain, when + effectiveFadeIn);
+            } else {
+              clipGain.gain.setValueAtTime(targetGain, when);
+            }
+
+            if (effectiveFadeOut > 0.001) {
+              const fadeOutStart = Math.max(when + effectiveFadeIn, when + clip.duration - effectiveFadeOut);
+              clipGain.gain.setValueAtTime(targetGain, fadeOutStart);
+              clipGain.gain.linearRampToValueAtTime(0.0001, when + clip.duration);
+            }
+
+            clipGain.connect(inputNode);
+
+            const waveform = getTrackSynthWaveform(track);
+            const adsr = getTrackSynthAdsr(track);
+            const sortedNotes = notes.slice().sort((a, b) => (a.start - b.start) || (a.pitch - b.pitch));
+
+            sortedNotes.forEach(note => {
+              const noteStartInClipSec = beatsToSeconds(note.start, state.bpm);
+              const noteDurSec = beatsToSeconds(note.duration, state.bpm);
+              if (noteStartInClipSec >= clip.duration) return;
+              const gateDurationSec = Math.max(0.01, Math.min(clip.duration - noteStartInClipSec, noteDurSec));
+
+              scheduleMidiNoteVoice(offlineCtx, clipGain, {
+                waveform,
+                adsr,
+                pitch: note.pitch,
+                velocity: note.velocity,
+                noteStartCtxTime: when + noteStartInClipSec,
+                gateDurationSec,
+                offsetIntoNoteSec: 0,
+                voiceRegistry: offlineMidiVoices,
+                clipId: clip.id
+              });
+            });
+            return;
+          }
+
+          if (!clip.buffer) return;
 
           const bufferDuration = clip.buffer.duration;
           if (!Number.isFinite(bufferDuration) || bufferDuration <= 0) return;
@@ -7933,8 +8763,9 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
         const track = state.tracks.find(t => t.id === selectedClip.trackId);
         const clipLocked = isClipOnLockedTrack(selectedClip);
+        const midiClip = isMidiClip(selectedClip);
         badge.textContent = `${clipLocked ? '🔒 ' : ''}${selectedClip.name} (${track ? track.name : ''})`;
-        badge.style.color = clipLocked ? '#fbbf24' : '#38bdf8';
+        badge.style.color = clipLocked ? '#fbbf24' : (midiClip ? '#c4b5fd' : '#38bdf8');
 
         const currentGain = (selectedClip.gain !== undefined && selectedClip.gain !== null) ? selectedClip.gain : 1.0;
         let gainDbDisplay = '0.0';
@@ -7946,21 +8777,26 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         }
 
         const clipPixelWidth = Math.round(selectedClip.duration * state.pixelsPerSecond);
-        const clipLod = getDynamicPeaksForClip(selectedClip, clipPixelWidth, state.pixelsPerSecond);
-        const clipLodInfo = selectedClip.buffer
-          ? `${clipLod.sampleInterval.toLocaleString()} smp/col (~${clipLod.intervalMs.toFixed(1)}ms)`
-          : '音源未リンク';
-
-        const sourceBadgeHtml = selectedClip.demoRecipe
-          ? `<span style="font-size: 9px; background: #064e3b; color: #6ee7b7; border: 1px solid #059669; border-radius: 3px; padding: 1px 5px; white-space: nowrap;">🎹 デモ音源 (${escapeHtml(selectedClip.demoRecipe.part)})</span>`
+        const clipLod = midiClip ? null : getDynamicPeaksForClip(selectedClip, clipPixelWidth, state.pixelsPerSecond);
+        const clipLodInfo = midiClip
+          ? `${(selectedClip.notes || []).length} ノート / ${secondsToBeats(selectedClip.duration, state.bpm).toFixed(2)} 拍`
           : (selectedClip.buffer
-            ? `<span style="font-size: 9px; background: #0f172a; color: #94a3b8; border: 1px solid #334155; border-radius: 3px; padding: 1px 5px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="元ファイル: ${escapeHtml(selectedClip.sourceFileName || selectedClip.name)}">🎵 ${escapeHtml(selectedClip.sourceFileName || selectedClip.name)}</span>`
-            : `<button id="btn-prop-relink-audio" class="prop-preset-btn" style="background: #451a03; border-color: #f59e0b; color: #fde68a; font-size: 9px; font-weight: 700; white-space: nowrap;" title="クリックして不足音源ファイルを再選択">⚠ 音源未リンク: ${escapeHtml(selectedClip.sourceFileName || selectedClip.name)} (再選択)</button>`);
+            ? `${clipLod.sampleInterval.toLocaleString()} smp/col (~${clipLod.intervalMs.toFixed(1)}ms)`
+            : '音源未リンク');
 
+        const sourceBadgeHtml = midiClip
+          ? `<span style="font-size: 9px; background: #1e1b4b; color: #ddd6fe; border: 1px solid #7c3aed; border-radius: 3px; padding: 1px 5px; white-space: nowrap;">🎹 MIDI (${(selectedClip.notes || []).length} 音)</span>`
+          : (selectedClip.demoRecipe
+            ? `<span style="font-size: 9px; background: #064e3b; color: #6ee7b7; border: 1px solid #059669; border-radius: 3px; padding: 1px 5px; white-space: nowrap;">🎹 デモ音源 (${escapeHtml(selectedClip.demoRecipe.part)})</span>`
+            : (selectedClip.buffer
+              ? `<span style="font-size: 9px; background: #0f172a; color: #94a3b8; border: 1px solid #334155; border-radius: 3px; padding: 1px 5px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="元ファイル: ${escapeHtml(selectedClip.sourceFileName || selectedClip.name)}">🎵 ${escapeHtml(selectedClip.sourceFileName || selectedClip.name)}</span>`
+              : `<button id="btn-prop-relink-audio" class="prop-preset-btn" style="background: #451a03; border-color: #f59e0b; color: #fde68a; font-size: 9px; font-weight: 700; white-space: nowrap;" title="クリックして不足音源ファイルを再選択">⚠ 音源未リンク: ${escapeHtml(selectedClip.sourceFileName || selectedClip.name)} (再選択)</button>`));
+
+        const clipTypeLimit = track ? getTrackTypeLimit(getTrackType(track)) : MAX_EDITABLE_TRACKS;
         const clipLockBannerHtml = clipLocked ? `
           <div style="background: #22170a; border: 1px solid #92400e; color: #fbbf24; border-radius: 4px; padding: 3px 7px; font-size: 10px; font-weight: 700; display: flex; align-items: center; gap: 5px;">
             <span>🔒</span>
-            <span>このクリップはロック中のトラック（${MAX_EDITABLE_TRACKS + 1}番目以降）に属しているため閲覧のみです</span>
+            <span>このクリップはロック中のトラック（${clipTypeLimit + 1}番目以降）に属しているため閲覧のみです</span>
           </div>
         ` : '';
 
@@ -8073,7 +8909,8 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
             </div>
 
             <!-- Clip Actions Footer -->
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px; flex-wrap: wrap;">
+              ${midiClip ? `<button id="btn-prop-open-piano-roll" class="btn" style="height: 22px; padding: 0 8px; font-size: 10px; background: #3b0764; border-color: #8b5cf6; color: #ede9fe; font-weight: 700;" title="ピアノロールエディタを開く (ダブルクリックでも開けます)">🎹 ピアノロールを開く</button>` : ''}
               <button id="btn-prop-split" class="btn" style="height: 22px; padding: 0 7px; font-size: 10px; background: #172133; border-color: #2a374f;">
                 ✂️ 再生ヘッド位置で分割
               </button>
@@ -8088,6 +8925,12 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         `;
 
         // Wire Event Listeners in Clip Properties Panel
+        const openPianoRollBtn = document.getElementById('btn-prop-open-piano-roll');
+        if (openPianoRollBtn) {
+          openPianoRollBtn.addEventListener('click', () => {
+            openPianoRoll(selectedClip.id);
+          });
+        }
         const propRelinkBtn = document.getElementById('btn-prop-relink-audio');
         if (propRelinkBtn) {
           propRelinkBtn.addEventListener('click', () => openMissingAudioModal());
@@ -8158,9 +9001,16 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
         const normalizeBtn = document.getElementById('btn-clip-normalize');
         if (normalizeBtn) {
-          normalizeBtn.addEventListener('click', () => {
-            normalizeClip(selectedClip.id);
-          });
+          if (midiClip) {
+            normalizeBtn.disabled = true;
+            normalizeBtn.style.opacity = '0.4';
+            normalizeBtn.style.cursor = 'not-allowed';
+            normalizeBtn.title = 'MIDIクリップには使用できません';
+          } else {
+            normalizeBtn.addEventListener('click', () => {
+              normalizeClip(selectedClip.id);
+            });
+          }
         }
 
         // Fade in & Fade out
@@ -8269,16 +9119,19 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         if (!clipEl) return;
         const header = clipEl.querySelector('.clip-header');
         if (!header) return;
-        const isUnlinked = !clip.buffer;
+        const midiClip = isMidiClip(clip);
+        const isUnlinked = !midiClip && !clip.buffer;
         const locked = isClipOnLockedTrack(clip);
         const lockIcon = locked ? `<span title="ロック中（編集不可）" style="font-size: 10px; flex-shrink: 0;">🔒</span>` : '';
         const gainDb = (clip.gain && Math.abs(clip.gain - 1.0) > 0.01) ? (20 * Math.log10(clip.gain)).toFixed(1) : null;
         const gainBadge = gainDb !== null ? `<span class="clip-gain-badge" style="background: rgba(0,0,0,0.65); border: 1px solid rgba(255,255,255,0.18); border-radius: 3px; padding: 0 4px; color: ${parseFloat(gainDb) > 0 ? '#34d399' : '#fbbf24'}; font-size: 9px; font-weight: 700; flex-shrink: 0;">${parseFloat(gainDb) > 0 ? '+' : ''}${gainDb}dB</span>` : '';
+        const midiBadge = midiClip ? `<span style="background: rgba(76, 29, 149, 0.85); border: 1px solid #8b5cf6; border-radius: 3px; padding: 0 4px; color: #ede9fe; font-size: 9px; font-weight: 700; flex-shrink: 0;">🎹 ${(clip.notes || []).length}</span>` : '';
         const unlinkedBadge = isUnlinked ? `<span style="background: #451a03; border: 1px solid #f59e0b; border-radius: 3px; padding: 0 4px; color: #fde68a; font-size: 9px; font-weight: 700; flex-shrink: 0;">⚠ 未リンク</span>` : '';
         header.innerHTML = `
           <div style="display: flex; align-items: center; gap: 4px; overflow: hidden; min-width: 0;">
             ${lockIcon}
             <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(clip.name)}</span>
+            ${midiBadge}
             ${unlinkedBadge}
             ${gainBadge}
           </div>
@@ -8332,7 +9185,12 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
       // Clip Peak Normalization to -1.0 dBFS
       function normalizeClip(clipId) {
         const clip = state.clips.find(c => c.id === clipId);
-        if (!clip || !clip.buffer) return;
+        if (!clip) return;
+        if (isMidiClip(clip)) {
+          showToast('MIDIクリップはオーディオ・ノーマライズ対象外です');
+          return;
+        }
+        if (!clip.buffer) return;
         if (isClipOnLockedTrack(clip)) {
           showToast('ロック中のトラックのクリップは編集できません');
           return;
@@ -8411,14 +9269,19 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
         state.tracks.forEach((track, trackIdx) => {
           const locked = isTrackLocked(trackIdx);
+          const midiTrack = isMidiTrack(track);
+          const trackTypeLimit = getTrackTypeLimit(getTrackType(track));
           const card = document.createElement('div');
-          card.className = `track-control-card ${state.selectedTrackId === track.id ? 'selected' : ''} ${locked ? 'locked' : ''}`;
+          card.className = `track-control-card ${midiTrack ? 'midi-track' : ''} ${state.selectedTrackId === track.id ? 'selected' : ''} ${locked ? 'locked' : ''}`;
           card.dataset.trackId = track.id;
           card.style.height = `${track.showPanAutomation ? 200 : 120}px`;
 
           // Main Controls Container (120px)
           const mainControls = document.createElement('div');
           mainControls.className = 'track-control-card-main';
+          if (midiTrack) {
+            mainControls.style.padding = '5px 12px';
+          }
 
           // Color strip
           const colorStrip = document.createElement('div');
@@ -8426,12 +9289,20 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           colorStrip.style.backgroundColor = track.color.hex;
           mainControls.appendChild(colorStrip);
 
-          // Header row: name, Lock badge, FX, Auto, Pan Auto, Mute, Solo
+          // Header row: name, MIDI/Lock badge, FX, Auto, Pan Auto, Mute, Solo
           const headerRow = document.createElement('div');
           headerRow.className = 'track-header-row';
 
           const nameWrap = document.createElement('div');
           nameWrap.style.cssText = 'display: flex; align-items: center; gap: 4px; min-width: 0; flex: 1;';
+
+          if (midiTrack) {
+            const midiBadge = document.createElement('span');
+            midiBadge.className = 'midi-track-badge';
+            midiBadge.textContent = '🎹 MIDI';
+            midiBadge.title = 'MIDI トラック（内蔵ポリフォニックシンセ）';
+            nameWrap.appendChild(midiBadge);
+          }
 
           const nameInput = document.createElement('input');
           nameInput.type = 'text';
@@ -8441,7 +9312,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           if (locked) {
             nameInput.disabled = true;
             nameInput.readOnly = true;
-            nameInput.title = 'ロック中（Web版で編集できるのは8トラックまでです）';
+            nameInput.title = `ロック中（Web版で編集できる${midiTrack ? 'MIDI' : 'オーディオ'}トラックは${trackTypeLimit}本までです）`;
           }
           nameInput.addEventListener('focus', () => { nameInput.dataset.preVal = nameInput.value; });
           nameInput.addEventListener('change', (e) => {
@@ -8450,6 +9321,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
               pushHistoryState('トラック名変更');
               track.name = e.target.value;
               renderTimeline();
+              if (typeof refreshOpenPianoRoll === 'function') refreshOpenPianoRoll();
             }
           });
           nameWrap.appendChild(nameInput);
@@ -8458,7 +9330,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
             const lockBadge = document.createElement('span');
             lockBadge.className = 'track-lock-badge';
             lockBadge.textContent = '🔒 ロック';
-            lockBadge.title = `9番目以降のトラックはWeb版ではロックされます（再生・保存のみ有効）`;
+            lockBadge.title = `${trackTypeLimit + 1}番目以降の${midiTrack ? 'MIDI' : 'オーディオ'}トラックはWeb版ではロックされます（再生・保存のみ有効）`;
             nameWrap.appendChild(lockBadge);
           }
 
@@ -8512,7 +9384,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           const autoBtn = document.createElement('button');
           autoBtn.className = 'mute-btn';
           autoBtn.innerHTML = '⚡';
-          autoBtn.title = locked ? 'ロック中のため自動調整不可' : 'このトラックの音量をワンクリックで自動最適化 (-1.0 dBFS)';
+          autoBtn.title = locked ? 'ロック中のため自動調整不可' : (midiTrack ? 'MIDIトラックは手動フェーダーで調整してください' : 'このトラックの音量をワンクリックで自動最適化 (-1.0 dBFS)');
           autoBtn.style.borderColor = '#4f46e5';
           autoBtn.style.color = '#c7d2fe';
           autoBtn.style.background = '#1e1b4b';
@@ -8529,7 +9401,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           dupTrackBtn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
           dupTrackBtn.title = locked
             ? 'ロック中のトラックは複製できません'
-            : (!canAddMoreEditableTracks() ? getTrackLimitReachedMessage() : 'このトラックを複製 (設定・EQ・FX・クリップを含む)');
+            : (!canAddMoreEditableTracks(getTrackType(track)) ? getTrackLimitReachedMessage(getTrackType(track)) : 'このトラックを複製 (設定・EQ・FX・クリップを含む)');
           dupTrackBtn.style.borderColor = '#0284c7';
           dupTrackBtn.style.color = '#7dd3fc';
           dupTrackBtn.style.background = '#082f49';
@@ -8766,6 +9638,73 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           eqRow.appendChild(highGroup);
           mainControls.appendChild(eqRow);
 
+          // Built-in Synth Waveform & MIDI Clip Creation Row for MIDI tracks
+          if (midiTrack) {
+            const midiSynthRow = document.createElement('div');
+            midiSynthRow.className = 'midi-synth-row';
+            midiSynthRow.style.padding = '1px 6px';
+
+            const wfLeft = document.createElement('div');
+            wfLeft.style.cssText = 'display: flex; align-items: center; gap: 5px;';
+            const wfLabel = document.createElement('span');
+            wfLabel.style.cssText = 'font-size: 9px; font-weight: 700; color: #a78bfa;';
+            wfLabel.textContent = 'SYNTH';
+            const wfSelect = document.createElement('select');
+            wfSelect.className = 'midi-waveform-select';
+            wfSelect.style.height = '18px';
+            wfSelect.disabled = locked;
+            wfSelect.title = locked ? 'ロック中のため波形変更不可' : 'MIDIトラックの内蔵シンセ波形';
+            MIDI_WAVEFORMS.forEach(wf => {
+              const opt = document.createElement('option');
+              opt.value = wf;
+              opt.textContent = wf;
+              if (getTrackSynthWaveform(track) === wf) opt.selected = true;
+              wfSelect.appendChild(opt);
+            });
+            wfSelect.addEventListener('click', (e) => e.stopPropagation());
+            wfSelect.addEventListener('change', (e) => {
+              e.stopPropagation();
+              if (locked) return;
+              pushHistoryState('MIDIシンセ波形変更');
+              track.synthWaveform = normalizeMidiWaveform(e.target.value);
+              rescheduleIfPlaying();
+              markProjectDirty();
+              if (typeof refreshOpenPianoRoll === 'function') refreshOpenPianoRoll();
+              showToast(`[${track.name}] シンセ波形: ${track.synthWaveform}`);
+            });
+            wfLeft.appendChild(wfLabel);
+            wfLeft.appendChild(wfSelect);
+
+            const addMidiClipBtn = document.createElement('button');
+            addMidiClipBtn.className = 'btn-add-midi-clip';
+            addMidiClipBtn.style.height = '18px';
+            addMidiClipBtn.textContent = '+ MIDIクリップ';
+            addMidiClipBtn.disabled = locked;
+            addMidiClipBtn.title = locked ? 'ロック中のため追加不可' : 'このMIDIトラックに空のMIDIクリップを追加してピアノロールを開く';
+            addMidiClipBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              if (locked) {
+                showToast('ロック中のトラックは編集できません');
+                return;
+              }
+              const trackClips = state.clips.filter(c => c.trackId === track.id);
+              const lastEnd = trackClips.reduce((m, c) => Math.max(m, c.startTimeInTimeline + c.duration), 0);
+              const targetStart = trackClips.length === 0 ? Math.max(0, snapTime(state.currentPlayheadTime)) : snapTime(lastEnd);
+              pushHistoryState('MIDIクリップ作成');
+              const created = createMidiClip(track.id, targetStart, 4, []);
+              if (!created) return;
+              state.selectedClipId = created.id;
+              state.selectedTrackId = track.id;
+              renderTimeline();
+              updateClipPropertiesPanel();
+              openPianoRoll(created.id);
+            });
+
+            midiSynthRow.appendChild(wfLeft);
+            midiSynthRow.appendChild(addMidiClipBtn);
+            mainControls.appendChild(midiSynthRow);
+          }
+
           card.appendChild(mainControls);
 
           // If Pan Automation is shown, render sidebar pan automation sub-panel (80px)
@@ -8929,8 +9868,10 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           const track = state.tracks[i];
           const isAutoOpen = !!(track && track.showPanAutomation);
           const locked = !!(track && isTrackLocked(i));
+          const midiTrack = !!(track && isMidiTrack(track));
+          const trackTypeLimit = track ? getTrackTypeLimit(getTrackType(track)) : MAX_EDITABLE_TRACKS;
           const lane = document.createElement('div');
-          lane.className = `track-lane ${isAutoOpen ? 'has-pan-automation' : ''} ${locked ? 'locked' : ''}`;
+          lane.className = `track-lane ${midiTrack ? 'midi-lane' : ''} ${isAutoOpen ? 'has-pan-automation' : ''} ${locked ? 'locked' : ''}`;
           lane.style.height = `${isAutoOpen ? 200 : 120}px`;
           if (track) {
             lane.dataset.trackId = track.id;
@@ -8942,7 +9883,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           if (locked) {
             const lockBanner = document.createElement('div');
             lockBanner.className = 'track-lane-lock-banner';
-            lockBanner.textContent = `🔒 ロック中（${MAX_EDITABLE_TRACKS + 1}番目以降・再生のみ / 編集不可）`;
+            lockBanner.textContent = `🔒 ロック中（${trackTypeLimit + 1}番目以降・再生のみ / 編集不可）`;
             clipsArea.appendChild(lockBanner);
           }
 
@@ -8955,10 +9896,32 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
             }
           });
 
+          // Double-clicking empty area on a MIDI track lane creates a 4-beat MIDI clip & opens Piano Roll
+          if (track && midiTrack) {
+            clipsArea.addEventListener('dblclick', (e) => {
+              if (e.target !== clipsArea) return;
+              if (locked) {
+                showToast('ロック中のトラックにはMIDIクリップを作成できません');
+                return;
+              }
+              const scrollLeft = document.getElementById('timeline-scroll-container').scrollLeft;
+              const viewportRect = document.getElementById('timeline-viewport').getBoundingClientRect();
+              const clickTime = snapTime((e.clientX - viewportRect.left + scrollLeft) / state.pixelsPerSecond);
+              pushHistoryState('MIDIクリップ作成');
+              const created = createMidiClip(track.id, clickTime, 4, []);
+              if (!created) return;
+              state.selectedClipId = created.id;
+              state.selectedTrackId = track.id;
+              renderTimeline();
+              updateClipPropertiesPanel();
+              openPianoRoll(created.id);
+            });
+          }
+
           // Drag & Drop audio files onto lane
           clipsArea.addEventListener('dragover', (e) => {
             e.preventDefault();
-            if (locked) {
+            if (locked || midiTrack) {
               if (e.dataTransfer) e.dataTransfer.dropEffect = 'none';
               return;
             }
@@ -8972,6 +9935,10 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
             clipsArea.classList.remove('drag-over');
             if (locked) {
               showToast('ロック中のトラックにはドロップできません');
+              return;
+            }
+            if (midiTrack) {
+              showToast('MIDIトラックには音声ファイルをドロップできません');
               return;
             }
             if (e.dataTransfer.files.length > 0) {
@@ -9570,12 +10537,13 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         });
       }
 
-      // Create Audio Clip DOM element with Waveform Canvas
+      // Create Audio or MIDI Clip DOM element with Waveform / MIDI Note Preview Canvas
       function createClipElement(clip, track) {
         const el = document.createElement('div');
-        const isUnlinked = !clip.buffer;
+        const midiClip = isMidiClip(clip);
+        const isUnlinked = !midiClip && !clip.buffer;
         const locked = isTrackLocked(track);
-        el.className = `audio-clip ${state.selectedClipId === clip.id ? 'selected' : ''} ${isUnlinked ? 'unlinked' : ''} ${locked ? 'locked-clip' : ''}`;
+        el.className = `audio-clip ${midiClip ? 'midi-clip' : ''} ${state.selectedClipId === clip.id ? 'selected' : ''} ${isUnlinked ? 'unlinked' : ''} ${locked ? 'locked-clip' : ''}`;
         el.id = clip.id;
 
         const leftX = clip.startTimeInTimeline * state.pixelsPerSecond;
@@ -9584,18 +10552,20 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         el.style.width = `${width}px`;
         el.style.borderColor = clip.id === state.selectedClipId ? '#60a5fa' : (isUnlinked ? '#f59e0b' : track.color.hex);
 
-        // Clip Header with Gain / Missing / Lock Badge
+        // Clip Header with Gain / MIDI / Missing / Lock Badge
         const header = document.createElement('div');
         header.className = 'clip-header';
         header.style.backgroundColor = isUnlinked ? 'rgba(217, 119, 6, 0.28)' : `${track.color.hex}33`; // 20% opacity
         const lockIcon = locked ? `<span title="ロック中（編集不可）" style="font-size: 10px; flex-shrink: 0;">🔒</span>` : '';
         const gainDb = (clip.gain && Math.abs(clip.gain - 1.0) > 0.01) ? (20 * Math.log10(clip.gain)).toFixed(1) : null;
         const gainBadge = gainDb !== null ? `<span class="clip-gain-badge" style="background: rgba(0,0,0,0.65); border: 1px solid rgba(255,255,255,0.18); border-radius: 3px; padding: 0 4px; color: ${parseFloat(gainDb) > 0 ? '#34d399' : '#fbbf24'}; font-size: 9px; font-weight: 700; flex-shrink: 0;">${parseFloat(gainDb) > 0 ? '+' : ''}${gainDb}dB</span>` : '';
+        const midiBadge = midiClip ? `<span style="background: rgba(76, 29, 149, 0.85); border: 1px solid #8b5cf6; border-radius: 3px; padding: 0 4px; color: #ede9fe; font-size: 9px; font-weight: 700; flex-shrink: 0;">🎹 ${(clip.notes || []).length}</span>` : '';
         const unlinkedBadge = isUnlinked ? `<span style="background: #451a03; border: 1px solid #f59e0b; border-radius: 3px; padding: 0 4px; color: #fde68a; font-size: 9px; font-weight: 700; flex-shrink: 0;">⚠ 未リンク</span>` : '';
         header.innerHTML = `
           <div style="display: flex; align-items: center; gap: 4px; overflow: hidden; min-width: 0;">
             ${lockIcon}
             <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(clip.name)}</span>
+            ${midiBadge}
             ${unlinkedBadge}
             ${gainBadge}
           </div>
@@ -9603,7 +10573,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         `;
         el.appendChild(header);
 
-        // Waveform Canvas
+        // Waveform / MIDI Notes Preview Canvas
         const canvas = document.createElement('canvas');
         canvas.className = 'clip-waveform-canvas';
         el.appendChild(canvas);
@@ -9635,10 +10605,20 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         el.appendChild(leftFadeHandle);
         el.appendChild(rightFadeHandle);
 
-        // Draw waveform on next tick
+        // Draw waveform or MIDI notes on next tick
         setTimeout(() => drawClipWaveform(canvas, clip, track), 0);
 
-        // --- Clip Interaction (Move, Trim, Fade, Split) ---
+        // --- Clip Interaction (Move, Trim, Fade, Split, Piano Roll Double-Click) ---
+        if (midiClip) {
+          el.title = 'ダブルクリックでピアノロールエディタを開く';
+          el.addEventListener('dblclick', (e) => {
+            if (e.target === leftHandle || e.target === rightHandle || e.target === leftFadeHandle || e.target === rightFadeHandle) return;
+            e.stopPropagation();
+            state.selectedClipId = clip.id;
+            state.selectedTrackId = clip.trackId;
+            openPianoRoll(clip.id);
+          });
+        }
 
         // Top-left / top-right fade corner drag
         leftFadeHandle.addEventListener('mousedown', (e) => {
@@ -9696,6 +10676,96 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         return el;
       }
 
+      // Mini MIDI Clip Piano-Roll Preview Renderer on Timeline
+      function drawMidiClipPreview(ctx, w, h, clip, track) {
+        const trackColor = (track && track.color) ? track.color : (state.tracks.find(t => t.id === clip.trackId)?.color || TRACK_COLORS[1]);
+        const hexColor = trackColor.hex || '#6366f1';
+        const waveColor = trackColor.wave || '#a78bfa';
+
+        ctx.clearRect(0, 0, w, h);
+
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+        bgGrad.addColorStop(0, hexToRgba(hexColor, 0.24));
+        bgGrad.addColorStop(0.5, 'rgba(13, 18, 36, 0.72)');
+        bgGrad.addColorStop(1, hexToRgba(hexColor, 0.18));
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, w, h);
+
+        // Vertical beat lines inside MIDI clip
+        const beatSec = getBeatDurationSec(state.bpm);
+        const totalBeats = Math.max(0.25, clip.duration / beatSec);
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.14)';
+        ctx.lineWidth = 1;
+        for (let b = 1; b < totalBeats; b++) {
+          const bx = (b / totalBeats) * w;
+          ctx.beginPath();
+          ctx.moveTo(bx, 0);
+          ctx.lineTo(bx, h);
+          ctx.stroke();
+        }
+
+        const notes = Array.isArray(clip.notes) ? clip.notes : [];
+        if (notes.length === 0) {
+          ctx.fillStyle = 'rgba(196, 181, 253, 0.65)';
+          ctx.font = 'bold 10px system-ui, -apple-system, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('🎹 ダブルクリックでMIDI打ち込み', w / 2, h / 2, Math.max(20, w - 12));
+        } else {
+          let minP = 127;
+          let maxP = 0;
+          notes.forEach(n => {
+            if (n.pitch < minP) minP = n.pitch;
+            if (n.pitch > maxP) maxP = n.pitch;
+          });
+          const span = Math.max(12, maxP - minP + 4);
+          const lowP = Math.max(0, minP - Math.floor((span - (maxP - minP)) / 2));
+          const padY = 6;
+          const drawH = Math.max(12, h - padY * 2);
+          const noteH = Math.max(3, Math.min(7, drawH / span * 1.4));
+
+          notes.forEach(n => {
+            const nx = (n.start / totalBeats) * w;
+            const nw = Math.max(3, (n.duration / totalBeats) * w);
+            if (nx + nw < 0 || nx > w) return;
+            const normY = 1 - Math.max(0, Math.min(1, (n.pitch - lowP) / span));
+            const ny = padY + normY * (drawH - noteH);
+            const alpha = 0.45 + 0.55 * (Math.max(0, Math.min(127, n.velocity || 100)) / 127);
+
+            ctx.fillStyle = hexToRgba(waveColor, alpha);
+            ctx.fillRect(nx, ny, nw, noteH);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+            ctx.lineWidth = 0.7;
+            ctx.strokeRect(nx, ny, nw, noteH);
+          });
+        }
+
+        // Fade-in & Fade-out corner overlays on MIDI clips as well
+        if (clip.fadeIn && clip.fadeIn > 0.001) {
+          const fadeInSec = Math.min(clip.fadeIn, clip.duration / 2);
+          const fadeInPx = (fadeInSec / clip.duration) * w;
+          ctx.fillStyle = 'rgba(2, 132, 199, 0.28)';
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(fadeInPx, 0);
+          ctx.lineTo(0, h);
+          ctx.closePath();
+          ctx.fill();
+        }
+        if (clip.fadeOut && clip.fadeOut > 0.001) {
+          const fadeOutSec = Math.min(clip.fadeOut, clip.duration / 2);
+          const fadeOutPx = (fadeOutSec / clip.duration) * w;
+          const startX = w - fadeOutPx;
+          ctx.fillStyle = 'rgba(217, 119, 6, 0.28)';
+          ctx.beginPath();
+          ctx.moveTo(startX, 0);
+          ctx.lineTo(w, 0);
+          ctx.lineTo(w, h);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+
       // Draw Waveform on Canvas with Retina Scaling
       function drawClipWaveform(canvas, clip, track) {
         if (!canvas) return;
@@ -9710,6 +10780,11 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         const w = rect.width;
         const h = rect.height;
         const midY = h / 2;
+
+        if (isMidiClip(clip)) {
+          drawMidiClipPreview(ctx, w, h, clip, track);
+          return;
+        }
 
         if (!clip.buffer) {
           ctx.clearRect(0, 0, w, h);
@@ -9919,8 +10994,10 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         const startMouseY = e.clientY;
         const initialStart = clip.startTimeInTimeline;
         const clipEl = document.getElementById(clip.id);
+        const clipIsMidi = isMidiClip(clip);
         let hasMoved = false;
         let lastHoveredLocked = false;
+        let lastHoveredMismatch = false;
 
         const onMouseMove = (moveEvt) => {
           const deltaPx = moveEvt.clientX - startMouseX;
@@ -9936,15 +11013,18 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           newStart = snapTime(newStart);
           clip.startTimeInTimeline = Math.max(0, newStart);
 
-          // Support dragging vertically to another unlocked track lane
+          // Support dragging vertically to another unlocked track lane of the matching type
           const lanes = Array.from(document.querySelectorAll('.track-lane'));
           let targetTrackIdx = state.tracks.findIndex(t => t.id === clip.trackId);
           lastHoveredLocked = false;
+          lastHoveredMismatch = false;
           for (let i = 0; i < lanes.length && i < state.tracks.length; i++) {
             const laneRect = lanes[i].getBoundingClientRect();
             if (moveEvt.clientY >= laneRect.top && moveEvt.clientY <= laneRect.bottom) {
               if (isTrackLocked(i)) {
                 lastHoveredLocked = true;
+              } else if (isMidiTrack(state.tracks[i]) !== clipIsMidi) {
+                lastHoveredMismatch = true;
               } else {
                 targetTrackIdx = i;
               }
@@ -9952,7 +11032,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
             }
           }
           const newTrack = state.tracks[targetTrackIdx];
-          if (newTrack && !isTrackLocked(newTrack) && clip.trackId !== newTrack.id) {
+          if (newTrack && !isTrackLocked(newTrack) && isMidiTrack(newTrack) === clipIsMidi && clip.trackId !== newTrack.id) {
             clip.trackId = newTrack.id;
             if (clip.id !== state.selectedClipId) {
               clipEl.style.borderColor = newTrack.color.hex;
@@ -9974,6 +11054,8 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           updateClipPropertiesPanel();
           if (hasMoved && lastHoveredLocked) {
             showToast('ロック中のトラックにはクリップを移動できません');
+          } else if (hasMoved && lastHoveredMismatch) {
+            showToast(clipIsMidi ? 'MIDIクリップはMIDIトラック間でのみ移動できます' : 'オーディオクリップはMIDIトラックへ移動できません');
           }
           if (state.isPlaying) {
             stopAllActiveSources();
@@ -9996,7 +11078,9 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         const initialStart = clip.startTimeInTimeline;
         const initialOffset = clip.offsetInBuffer;
         const initialDur = clip.duration;
-        const maxBufferDur = clip.buffer ? clip.buffer.duration : Math.max(initialOffset + initialDur + 60, 120);
+        const midiClip = isMidiClip(clip);
+        const initialNotes = midiClip ? normalizeMidiNotes(clip.notes || []) : null;
+        const maxBufferDur = midiClip ? Infinity : (clip.buffer ? clip.buffer.duration : Math.max(initialOffset + initialDur + 60, 120));
         let hasTrimmed = false;
 
         const onMouseMove = (moveEvt) => {
@@ -10013,19 +11097,32 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
             // Trim left
             let newStart = snapTime(initialStart + deltaTime);
             const delta = newStart - initialStart;
-            let newOffset = initialOffset + delta;
             let newDuration = initialDur - delta;
 
-            if (newOffset >= 0 && newDuration > 0.05) {
-              clip.startTimeInTimeline = newStart;
-              clip.offsetInBuffer = newOffset;
-              clip.duration = newDuration;
+            if (midiClip) {
+              if (newStart >= 0 && newDuration > 0.1) {
+                const deltaBeats = secondsToBeats(delta, state.bpm);
+                clip.startTimeInTimeline = newStart;
+                clip.offsetInBuffer = 0;
+                clip.duration = newDuration;
+                clip.notes = (initialNotes || [])
+                  .map(n => ({ ...n, start: n.start - deltaBeats }))
+                  .filter(n => n.start + n.duration > 0.01)
+                  .map(n => n.start < 0 ? { ...n, duration: Math.max(0.03125, n.duration + n.start), start: 0 } : n);
+              }
+            } else {
+              let newOffset = initialOffset + delta;
+              if (newOffset >= 0 && newDuration > 0.05) {
+                clip.startTimeInTimeline = newStart;
+                clip.offsetInBuffer = newOffset;
+                clip.duration = newDuration;
+              }
             }
           } else {
             // Trim right
             let newEnd = snapTime(initialStart + initialDur + deltaTime);
             let newDuration = newEnd - initialStart;
-            if (newDuration > 0.05 && (initialOffset + newDuration) <= maxBufferDur + 0.01) {
+            if (newDuration > 0.05 && (midiClip || (initialOffset + newDuration) <= maxBufferDur + 0.01)) {
               clip.duration = newDuration;
             }
           }
@@ -10049,6 +11146,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           window.removeEventListener('mouseup', onMouseUp);
           renderTimeline();
           updateClipPropertiesPanel();
+          if (typeof refreshOpenPianoRoll === 'function') refreshOpenPianoRoll();
           if (state.isPlaying) {
             stopAllActiveSources();
             state.playbackStartTimeInCtx = state.audioCtx.currentTime;
@@ -10416,8 +11514,15 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           showToast('ロック中のトラックには音声を追加できません');
           return;
         }
-        if (!targetTrackId && !canAddMoreEditableTracks()) {
-          showToast(getTrackLimitReachedMessage());
+        if (targetTrackId) {
+          const targetTrackObj = state.tracks.find(t => t.id === targetTrackId);
+          if (targetTrackObj && isMidiTrack(targetTrackObj)) {
+            showToast('MIDIトラックには音声ファイルを追加できません');
+            return;
+          }
+        }
+        if (!targetTrackId && !canAddMoreEditableTracks('audio')) {
+          showToast(getTrackLimitReachedMessage('audio'));
           return;
         }
 
@@ -10434,13 +11539,17 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
               showToast('ロック中のトラックには音声を追加できません');
               break;
             }
+            if (track && isMidiTrack(track)) {
+              showToast('MIDIトラックには音声ファイルを追加できません');
+              break;
+            }
             if (!track) {
-              if (!canAddMoreEditableTracks()) {
-                showToast(getTrackLimitReachedMessage());
+              if (!canAddMoreEditableTracks('audio')) {
+                showToast(getTrackLimitReachedMessage('audio'));
                 break;
               }
               const trackName = file.name.replace(/\.[^/.]+$/, '');
-              track = createTrack(trackName, state.tracks.length);
+              track = createTrack(trackName, state.tracks.length, { type: 'audio' });
               if (!track) break;
             }
 
@@ -10520,7 +11629,10 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           state.bpm = val;
           renderRuler();
           renderGrid();
+          renderTimeline();
           updateTimeDisplays();
+          if (typeof refreshOpenPianoRoll === 'function') refreshOpenPianoRoll();
+          rescheduleIfPlaying();
           markProjectDirty();
         }
       });
@@ -10668,18 +11780,728 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         btnExportMp3.addEventListener('click', () => exportMixdownMp3());
       }
 
-      // Add Track Button
-      document.getElementById('btn-add-track').addEventListener('click', () => {
-        if (!canAddMoreEditableTracks()) {
-          showToast(getTrackLimitReachedMessage());
+      // Add Track Type Popover (Audio vs MIDI)
+      const btnAddTrack = document.getElementById('btn-add-track');
+      const addTrackPopover = document.getElementById('add-track-type-popover');
+      const btnAddAudioTrack = document.getElementById('btn-add-audio-track');
+      const btnAddMidiTrack = document.getElementById('btn-add-midi-track');
+
+      function closeAddTrackPopover() {
+        if (addTrackPopover) addTrackPopover.classList.add('hidden');
+      }
+
+      if (btnAddTrack && addTrackPopover) {
+        btnAddTrack.addEventListener('click', (e) => {
+          e.stopPropagation();
+          updateTrackLimitIndicator();
+          addTrackPopover.classList.toggle('hidden');
+        });
+        addTrackPopover.addEventListener('click', (e) => e.stopPropagation());
+        document.addEventListener('click', (e) => {
+          if (!addTrackPopover.contains(e.target) && e.target !== btnAddTrack) {
+            closeAddTrackPopover();
+          }
+        });
+      }
+
+      if (btnAddAudioTrack) {
+        btnAddAudioTrack.addEventListener('click', () => {
+          closeAddTrackPopover();
+          if (!canAddMoreEditableTracks('audio')) {
+            showToast(getTrackLimitReachedMessage('audio'));
+            return;
+          }
+          pushHistoryState('オーディオトラック追加');
+          const nextAudioNum = getAudioTracks().length + 1;
+          const created = createTrack(`Audio ${nextAudioNum}`, state.tracks.length, { type: 'audio' });
+          if (!created) return;
+          state.selectedTrackId = created.id;
+          renderTrackSidebar();
+          renderTimeline();
+        });
+      }
+
+      if (btnAddMidiTrack) {
+        btnAddMidiTrack.addEventListener('click', () => {
+          closeAddTrackPopover();
+          if (!canAddMoreEditableTracks('midi')) {
+            showToast(getTrackLimitReachedMessage('midi'));
+            return;
+          }
+          pushHistoryState('MIDIトラック追加');
+          const nextMidiNum = getMidiTracks().length + 1;
+          const created = createTrack(`MIDI ${nextMidiNum}`, state.tracks.length, {
+            type: 'midi',
+            synthWaveform: 'sawtooth'
+          });
+          if (!created) return;
+          state.selectedTrackId = created.id;
+          renderTrackSidebar();
+          renderTimeline();
+          showToast(`🎹 MIDIトラック "${created.name}" を追加しました (ダブルクリックでMIDIクリップ作成)`);
+        });
+      }
+
+      // --- Interactive Piano Roll Editor Controller (MIDI Note Programming) ---
+      const pianoRollState = {
+        isOpen: false,
+        clipId: null,
+        trackId: null,
+        snapBeats: 0.25, // 1 = 1/4 beat (quarter), 0.5 = 1/8, 0.25 = 1/16
+        pixelsPerBeat: 96,
+        rowHeight: 16,
+        minPitch: PIANO_ROLL_MIN_MIDI, // C2 (36)
+        maxPitch: PIANO_ROLL_MAX_MIDI, // C7 (96)
+        activeKeyPitch: null,
+        hoverPitch: null,
+        dragInfo: null
+      };
+
+      function getPianoRollClip() {
+        if (!pianoRollState.clipId) return null;
+        return state.clips.find(c => c.id === pianoRollState.clipId) || null;
+      }
+
+      function getPianoRollTrack(clip = null) {
+        const target = clip || getPianoRollClip();
+        if (!target) return null;
+        return state.tracks.find(t => t.id === target.trackId) || null;
+      }
+
+      function getPianoRollTotalBeats(clip) {
+        if (!clip) return 8;
+        const clipBeats = Math.max(1, secondsToBeats(clip.duration, state.bpm));
+        let maxNoteEnd = 0;
+        (clip.notes || []).forEach(n => {
+          maxNoteEnd = Math.max(maxNoteEnd, (Number(n.start) || 0) + (Number(n.duration) || 0));
+        });
+        return Math.max(4, Math.ceil(Math.max(clipBeats, maxNoteEnd) / 4) * 4);
+      }
+
+      function updatePianoRollStatusReadout(pitch = null, beat = null, velocity = MIDI_NOTE_DEFAULT_VELOCITY) {
+        const readoutEl = document.getElementById('piano-roll-status-readout');
+        if (!readoutEl) return;
+        const pitchStr = (pitch !== null && pitch !== undefined) ? `${midiPitchToName(pitch)} (${pitch})` : '--';
+        const beatStr = (beat !== null && beat !== undefined) ? beat.toFixed(2) : '0.00';
+        readoutEl.textContent = `音階: ${pitchStr} | 拍: ${beatStr} | Velocity: ${velocity}`;
+      }
+
+      function openPianoRoll(clipId) {
+        const clip = state.clips.find(c => c.id === clipId);
+        if (!clip || !isMidiClip(clip)) {
+          showToast('MIDIクリップが見つかりません');
           return;
         }
-        pushHistoryState('トラック追加');
-        const created = createTrack(`Track ${state.tracks.length + 1}`, state.tracks.length);
-        if (!created) return;
-        renderTrackSidebar();
-        renderTimeline();
-      });
+        const track = getPianoRollTrack(clip);
+        pianoRollState.isOpen = true;
+        pianoRollState.clipId = clip.id;
+        pianoRollState.trackId = track ? track.id : null;
+        if (!Array.isArray(clip.notes)) clip.notes = [];
+
+        const modal = document.getElementById('piano-roll-modal');
+        if (modal) modal.classList.remove('waveform-popover-hidden');
+
+        const snapSel = document.getElementById('piano-roll-snap');
+        if (snapSel) snapSel.value = String(pianoRollState.snapBeats);
+
+        syncPianoRollHeader();
+        renderPianoRoll();
+
+        // Center scroll vertically around C4 (MIDI 60) on open
+        requestAnimationFrame(() => {
+          const gridScroll = document.getElementById('piano-roll-grid-scroll');
+          const keysScroll = document.getElementById('piano-roll-keys-scroll');
+          if (gridScroll) {
+            const targetRow = pianoRollState.maxPitch - 64;
+            const centerTop = Math.max(0, targetRow * pianoRollState.rowHeight - gridScroll.clientHeight * 0.45);
+            gridScroll.scrollTop = centerTop;
+            if (keysScroll) keysScroll.scrollTop = centerTop;
+          }
+        });
+      }
+
+      function closePianoRoll() {
+        pianoRollState.isOpen = false;
+        pianoRollState.dragInfo = null;
+        pianoRollState.activeKeyPitch = null;
+        const modal = document.getElementById('piano-roll-modal');
+        if (modal) modal.classList.add('waveform-popover-hidden');
+      }
+
+      function refreshOpenPianoRoll() {
+        if (!pianoRollState.isOpen) return;
+        const clip = getPianoRollClip();
+        if (!clip || !isMidiClip(clip)) {
+          closePianoRoll();
+          return;
+        }
+        syncPianoRollHeader();
+        renderPianoRoll();
+      }
+
+      function syncPianoRollHeader() {
+        const clip = getPianoRollClip();
+        const track = getPianoRollTrack(clip);
+        if (!clip) return;
+        const locked = isClipOnLockedTrack(clip);
+
+        const titleEl = document.getElementById('piano-roll-title');
+        if (titleEl) titleEl.textContent = clip.name || 'MIDI Clip';
+        const trackBadgeEl = document.getElementById('piano-roll-track-badge');
+        if (trackBadgeEl) trackBadgeEl.textContent = track ? track.name : 'MIDI Track';
+        const lockBadgeEl = document.getElementById('piano-roll-lock-badge');
+        if (lockBadgeEl) lockBadgeEl.style.display = locked ? 'inline-block' : 'none';
+        const wfSel = document.getElementById('piano-roll-waveform');
+        if (wfSel && track) {
+          wfSel.value = getTrackSynthWaveform(track);
+          wfSel.disabled = locked;
+        }
+        const extendBtn = document.getElementById('btn-piano-roll-extend-bar');
+        if (extendBtn) {
+          extendBtn.disabled = locked;
+          extendBtn.style.opacity = locked ? '0.45' : '1';
+        }
+        const noteCountEl = document.getElementById('piano-roll-note-count');
+        if (noteCountEl) {
+          noteCountEl.textContent = `${(clip.notes || []).length} ノート`;
+        }
+      }
+
+      function isMidiBlackKey(pitch) {
+        const pc = ((pitch % 12) + 12) % 12;
+        return pc === 1 || pc === 3 || pc === 6 || pc === 8 || pc === 10;
+      }
+
+      function renderPianoRoll() {
+        const clip = getPianoRollClip();
+        if (!clip) return;
+        const track = getPianoRollTrack(clip);
+        syncPianoRollHeader();
+        renderPianoRollKeys();
+        renderPianoRollRuler(clip);
+        renderPianoRollGrid(clip, track);
+      }
+
+      function renderPianoRollKeys() {
+        const canvas = document.getElementById('piano-roll-keys-canvas');
+        if (!canvas) return;
+        const rowCount = pianoRollState.maxPitch - pianoRollState.minPitch + 1;
+        const w = 68;
+        const h = rowCount * pianoRollState.rowHeight;
+        const dpr = window.devicePixelRatio || 1;
+        canvas.style.width = `${w}px`;
+        canvas.style.height = `${h}px`;
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
+        const ctx = canvas.getContext('2d');
+        ctx.save();
+        ctx.scale(dpr, dpr);
+
+        for (let p = pianoRollState.maxPitch; p >= pianoRollState.minPitch; p--) {
+          const rowIdx = pianoRollState.maxPitch - p;
+          const y = rowIdx * pianoRollState.rowHeight;
+          const isBlack = isMidiBlackKey(p);
+          const isActive = pianoRollState.activeKeyPitch === p;
+          const isHover = pianoRollState.hoverPitch === p;
+          const isC = ((p % 12) + 12) % 12 === 0;
+
+          if (isActive) {
+            ctx.fillStyle = '#7c3aed';
+          } else if (isBlack) {
+            ctx.fillStyle = isHover ? '#1e293b' : '#090d16';
+          } else {
+            ctx.fillStyle = isHover ? '#cbd5e1' : '#e2e8f0';
+          }
+          ctx.fillRect(0, y, isBlack ? w * 0.66 : w, pianoRollState.rowHeight);
+
+          if (isBlack) {
+            ctx.fillStyle = isHover ? '#1f2937' : '#cbd5e1';
+            ctx.fillRect(w * 0.66, y, w * 0.34, pianoRollState.rowHeight);
+          }
+
+          ctx.strokeStyle = isC ? '#475569' : '#334155';
+          ctx.lineWidth = isC ? 1.2 : 0.7;
+          ctx.beginPath();
+          ctx.moveTo(0, y + pianoRollState.rowHeight - 0.5);
+          ctx.lineTo(w, y + pianoRollState.rowHeight - 0.5);
+          ctx.stroke();
+
+          if (isC || isActive) {
+            ctx.fillStyle = isActive ? '#ffffff' : (isBlack ? '#94a3b8' : '#0f172a');
+            ctx.font = 'bold 9px ui-monospace, SFMono-Regular, monospace';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(midiPitchToName(p), w - 5, y + pianoRollState.rowHeight / 2);
+          }
+        }
+        ctx.restore();
+      }
+
+      function renderPianoRollRuler(clip) {
+        const canvas = document.getElementById('piano-roll-ruler-canvas');
+        if (!canvas || !clip) return;
+        const totalBeats = getPianoRollTotalBeats(clip);
+        const w = Math.max(400, Math.round(totalBeats * pianoRollState.pixelsPerBeat));
+        const h = 24;
+        const dpr = window.devicePixelRatio || 1;
+        canvas.style.width = `${w}px`;
+        canvas.style.height = `${h}px`;
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
+        const ctx = canvas.getContext('2d');
+        ctx.save();
+        ctx.scale(dpr, dpr);
+
+        ctx.fillStyle = '#080c17';
+        ctx.fillRect(0, 0, w, h);
+
+        const clipEndBeat = secondsToBeats(clip.duration, state.bpm);
+        const clipEndX = clipEndBeat * pianoRollState.pixelsPerBeat;
+        ctx.fillStyle = 'rgba(139, 92, 246, 0.14)';
+        ctx.fillRect(0, 0, clipEndX, h);
+
+        for (let b = 0; b <= totalBeats; b++) {
+          const x = b * pianoRollState.pixelsPerBeat;
+          const isBar = b % 4 === 0;
+          ctx.strokeStyle = isBar ? '#475569' : '#1e293b';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x + 0.5, isBar ? 0 : 12);
+          ctx.lineTo(x + 0.5, h);
+          ctx.stroke();
+          if (isBar && b < totalBeats) {
+            ctx.fillStyle = '#cbd5e1';
+            ctx.font = 'bold 10px ui-monospace, SFMono-Regular, monospace';
+            ctx.fillText(`${Math.floor(b / 4) + 1}`, x + 5, 13);
+          }
+        }
+
+        // Clip end marker
+        ctx.strokeStyle = '#a78bfa';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(clipEndX, 0);
+        ctx.lineTo(clipEndX, h);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      function renderPianoRollGrid(clip, track) {
+        const canvas = document.getElementById('piano-roll-canvas');
+        if (!canvas || !clip) return;
+        const rowCount = pianoRollState.maxPitch - pianoRollState.minPitch + 1;
+        const totalBeats = getPianoRollTotalBeats(clip);
+        const ppb = pianoRollState.pixelsPerBeat;
+        const rh = pianoRollState.rowHeight;
+        const w = Math.max(400, Math.round(totalBeats * ppb));
+        const h = rowCount * rh;
+        const dpr = window.devicePixelRatio || 1;
+        canvas.style.width = `${w}px`;
+        canvas.style.height = `${h}px`;
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
+        const ctx = canvas.getContext('2d');
+        ctx.save();
+        ctx.scale(dpr, dpr);
+
+        // 1. Horizontal Pitch Rows
+        for (let p = pianoRollState.maxPitch; p >= pianoRollState.minPitch; p--) {
+          const rowIdx = pianoRollState.maxPitch - p;
+          const y = rowIdx * rh;
+          const isBlack = isMidiBlackKey(p);
+          const isC = ((p % 12) + 12) % 12 === 0;
+          ctx.fillStyle = isBlack ? '#070b14' : '#0b101d';
+          ctx.fillRect(0, y, w, rh);
+
+          if (pianoRollState.hoverPitch === p) {
+            ctx.fillStyle = 'rgba(139, 92, 246, 0.08)';
+            ctx.fillRect(0, y, w, rh);
+          }
+
+          ctx.strokeStyle = isC ? '#27344e' : '#121a2c';
+          ctx.lineWidth = isC ? 1 : 0.7;
+          ctx.beginPath();
+          ctx.moveTo(0, y + rh - 0.5);
+          ctx.lineTo(w, y + rh - 0.5);
+          ctx.stroke();
+        }
+
+        // 2. Vertical Beat & Snap Grid Lines
+        const step = Math.max(0.125, Number(pianoRollState.snapBeats) || 0.25);
+        const numSteps = Math.round(totalBeats / step);
+        for (let s = 0; s <= numSteps; s++) {
+          const beat = s * step;
+          const x = Math.round(beat * ppb) + 0.5;
+          const isBar = Math.abs(beat % 4) < 0.001;
+          const isBeat = Math.abs(beat % 1) < 0.001;
+          ctx.strokeStyle = isBar ? '#334468' : (isBeat ? '#1d283f' : '#111828');
+          ctx.lineWidth = isBar ? 1.2 : 0.8;
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, h);
+          ctx.stroke();
+        }
+
+        // 3. Shade region beyond clip duration
+        const clipBeats = secondsToBeats(clip.duration, state.bpm);
+        const clipEndX = clipBeats * ppb;
+        if (clipEndX < w) {
+          ctx.fillStyle = 'rgba(2, 6, 23, 0.55)';
+          ctx.fillRect(clipEndX, 0, w - clipEndX, h);
+          ctx.strokeStyle = 'rgba(167, 139, 250, 0.55)';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.moveTo(clipEndX, 0);
+          ctx.lineTo(clipEndX, h);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        // 4. MIDI Note Rectangles
+        const noteHex = (track && track.color && track.color.hex) ? track.color.hex : '#8b5cf6';
+        const noteWave = (track && track.color && track.color.wave) ? track.color.wave : '#a78bfa';
+        const notes = Array.isArray(clip.notes) ? clip.notes : [];
+
+        notes.forEach(n => {
+          if (n.pitch < pianoRollState.minPitch || n.pitch > pianoRollState.maxPitch) return;
+          const rowIdx = pianoRollState.maxPitch - n.pitch;
+          const nx = n.start * ppb;
+          const ny = rowIdx * rh + 1;
+          const nw = Math.max(6, n.duration * ppb);
+          const nh = rh - 2;
+          const velNorm = Math.max(0.25, Math.min(1, (n.velocity !== undefined ? n.velocity : 100) / 127));
+          const isActiveDrag = pianoRollState.dragInfo && pianoRollState.dragInfo.noteId === n.id;
+
+          ctx.fillStyle = isActiveDrag ? '#c4b5fd' : hexToRgba(noteWave, 0.45 + 0.5 * velNorm);
+          ctx.fillRect(nx, ny, nw, nh);
+
+          ctx.strokeStyle = isActiveDrag ? '#ffffff' : hexToRgba(noteHex, 0.95);
+          ctx.lineWidth = isActiveDrag ? 1.5 : 1;
+          ctx.strokeRect(nx + 0.5, ny + 0.5, Math.max(4, nw - 1), nh - 1);
+
+          // Resize handle indicator on right edge
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.42)';
+          ctx.fillRect(nx + nw - 3, ny + 2, 2, Math.max(2, nh - 4));
+
+          if (nw >= 26) {
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 9px ui-monospace, SFMono-Regular, monospace';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(midiPitchToName(n.pitch), nx + 4, ny + nh / 2, nw - 8);
+          }
+        });
+
+        // 5. Playhead inside clip when playhead falls inside this MIDI clip
+        if (state.currentPlayheadTime >= clip.startTimeInTimeline && state.currentPlayheadTime <= clip.startTimeInTimeline + clip.duration) {
+          const beatOffset = secondsToBeats(state.currentPlayheadTime - clip.startTimeInTimeline, state.bpm);
+          const px = beatOffset * ppb;
+          ctx.strokeStyle = '#fde047';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(px, 0);
+          ctx.lineTo(px, h);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
+
+      function drawOpenPianoRollPlayhead() {
+        if (!pianoRollState.isOpen) return;
+        const clip = getPianoRollClip();
+        const track = getPianoRollTrack(clip);
+        if (clip) renderPianoRollGrid(clip, track);
+      }
+
+      function snapPianoRollBeat(beat, floorMode = false) {
+        const step = Math.max(0.125, Number(pianoRollState.snapBeats) || 0.25);
+        const fn = floorMode ? Math.floor : Math.round;
+        return Math.max(0, Number((fn(beat / step) * step).toFixed(4)));
+      }
+
+      function getPianoRollCoordsFromMouse(canvas, e) {
+        const rect = canvas.getBoundingClientRect();
+        const x = Math.max(0, e.clientX - rect.left);
+        const y = Math.max(0, e.clientY - rect.top);
+        const rowIdx = Math.floor(y / pianoRollState.rowHeight);
+        const pitch = Math.max(pianoRollState.minPitch, Math.min(pianoRollState.maxPitch, pianoRollState.maxPitch - rowIdx));
+        const beat = x / pianoRollState.pixelsPerBeat;
+        return { x, y, pitch, beat };
+      }
+
+      function hitTestPianoRollNote(clip, x, pitch) {
+        const notes = Array.isArray(clip.notes) ? clip.notes : [];
+        const ppb = pianoRollState.pixelsPerBeat;
+        for (let i = notes.length - 1; i >= 0; i--) {
+          const n = notes[i];
+          if (n.pitch !== pitch) continue;
+          const nx = n.start * ppb;
+          const nw = Math.max(6, n.duration * ppb);
+          if (x >= nx - 2 && x <= nx + nw + 3) {
+            const resizeZone = Math.min(8, Math.max(4, nw * 0.28));
+            const mode = (x >= nx + nw - resizeZone) ? 'resize' : 'move';
+            return { note: n, mode };
+          }
+        }
+        return null;
+      }
+
+      function commitPianoRollClipUpdate(clip, pushLabel = null) {
+        if (!clip) return;
+        // Expand clip duration cleanly if notes extend beyond clip boundary
+        let maxNoteEndBeats = 0;
+        (clip.notes || []).forEach(n => {
+          maxNoteEndBeats = Math.max(maxNoteEndBeats, n.start + n.duration);
+        });
+        const maxNoteEndSec = beatsToSeconds(maxNoteEndBeats, state.bpm);
+        if (maxNoteEndSec > clip.duration + 0.005) {
+          clip.duration = maxNoteEndSec;
+        }
+        if (pushLabel) {
+          // caller already pushed history before mutation if needed
+        }
+        updateClipHeaderBadge(clip);
+        updateClipWaveformDisplay(clip);
+        if (state.selectedClipId === clip.id) {
+          updateClipPropertiesPanel();
+        }
+        syncPianoRollHeader();
+        renderPianoRoll();
+        rescheduleIfPlaying();
+        markProjectDirty();
+      }
+
+      // Wire Piano Roll Modal Controls & Scroll Sync
+      const prGridScroll = document.getElementById('piano-roll-grid-scroll');
+      const prKeysScroll = document.getElementById('piano-roll-keys-scroll');
+      const prRulerScroll = document.getElementById('piano-roll-ruler-scroll');
+      if (prGridScroll) {
+        prGridScroll.addEventListener('scroll', () => {
+          if (prKeysScroll) prKeysScroll.scrollTop = prGridScroll.scrollTop;
+          if (prRulerScroll) prRulerScroll.scrollLeft = prGridScroll.scrollLeft;
+        });
+      }
+
+      const prKeysCanvas = document.getElementById('piano-roll-keys-canvas');
+      if (prKeysCanvas) {
+        prKeysCanvas.addEventListener('pointerdown', (e) => {
+          const rect = prKeysCanvas.getBoundingClientRect();
+          const y = Math.max(0, e.clientY - rect.top);
+          const rowIdx = Math.floor(y / pianoRollState.rowHeight);
+          const pitch = Math.max(pianoRollState.minPitch, Math.min(pianoRollState.maxPitch, pianoRollState.maxPitch - rowIdx));
+          pianoRollState.activeKeyPitch = pitch;
+          renderPianoRollKeys();
+          updatePianoRollStatusReadout(pitch, 0, MIDI_NOTE_DEFAULT_VELOCITY);
+          previewMidiNote(getPianoRollTrack(), pitch, 0.25, MIDI_NOTE_DEFAULT_VELOCITY);
+        });
+        const clearActiveKey = () => {
+          if (pianoRollState.activeKeyPitch !== null) {
+            pianoRollState.activeKeyPitch = null;
+            renderPianoRollKeys();
+          }
+        };
+        prKeysCanvas.addEventListener('pointerup', clearActiveKey);
+        prKeysCanvas.addEventListener('pointerleave', clearActiveKey);
+      }
+
+      const prCanvas = document.getElementById('piano-roll-canvas');
+      if (prCanvas) {
+        prCanvas.addEventListener('pointerdown', (e) => {
+          if (e.button !== 0) return;
+          const clip = getPianoRollClip();
+          if (!clip) return;
+          const track = getPianoRollTrack(clip);
+          const coords = getPianoRollCoordsFromMouse(prCanvas, e);
+          if (isClipOnLockedTrack(clip)) {
+            previewMidiNote(track, coords.pitch, 0.22, MIDI_NOTE_DEFAULT_VELOCITY);
+            showToast('ロック中のMIDIトラックは閲覧のみです（編集不可）');
+            return;
+          }
+
+          const hit = hitTestPianoRollNote(clip, coords.x, coords.pitch);
+          if (hit) {
+            // Prepare for potential click-delete, drag-move, or drag-resize
+            pianoRollState.dragInfo = {
+              noteId: hit.note.id,
+              mode: hit.mode,
+              startX: e.clientX,
+              startY: e.clientY,
+              origStart: hit.note.start,
+              origDuration: hit.note.duration,
+              origPitch: hit.note.pitch,
+              anchorBeat: coords.beat,
+              hasDragged: false,
+              preSnapshotNotes: normalizeMidiNotes(clip.notes),
+              lastAuditionPitch: hit.note.pitch
+            };
+            try { prCanvas.setPointerCapture(e.pointerId); } catch (err) {}
+            updatePianoRollStatusReadout(hit.note.pitch, hit.note.start, hit.note.velocity);
+          } else {
+            // Empty cell clicked: add note at snapped beat with current snap duration & velocity 100
+            pushHistoryState('MIDIノート追加');
+            const snapDur = Math.max(0.125, Number(pianoRollState.snapBeats) || 0.25);
+            const snappedStart = snapPianoRollBeat(coords.beat, true);
+            const newNote = normalizeMidiNote({
+              pitch: coords.pitch,
+              start: snappedStart,
+              duration: snapDur,
+              velocity: MIDI_NOTE_DEFAULT_VELOCITY
+            });
+            if (!Array.isArray(clip.notes)) clip.notes = [];
+            clip.notes.push(newNote);
+            previewMidiNote(track, newNote.pitch, Math.min(0.45, Math.max(0.12, beatsToSeconds(newNote.duration, state.bpm))), newNote.velocity);
+            updatePianoRollStatusReadout(newNote.pitch, newNote.start, newNote.velocity);
+            commitPianoRollClipUpdate(clip);
+          }
+        });
+
+        prCanvas.addEventListener('pointermove', (e) => {
+          const clip = getPianoRollClip();
+          if (!clip) return;
+          const track = getPianoRollTrack(clip);
+          const coords = getPianoRollCoordsFromMouse(prCanvas, e);
+          const d = pianoRollState.dragInfo;
+
+          if (!d) {
+            const hit = hitTestPianoRollNote(clip, coords.x, coords.pitch);
+            prCanvas.style.cursor = isClipOnLockedTrack(clip)
+              ? 'not-allowed'
+              : (hit ? (hit.mode === 'resize' ? 'ew-resize' : 'grab') : 'crosshair');
+            if (pianoRollState.hoverPitch !== coords.pitch) {
+              pianoRollState.hoverPitch = coords.pitch;
+              renderPianoRollKeys();
+              renderPianoRollGrid(clip, track);
+            }
+            updatePianoRollStatusReadout(coords.pitch, snapPianoRollBeat(coords.beat, true), MIDI_NOTE_DEFAULT_VELOCITY);
+            return;
+          }
+
+          const note = (clip.notes || []).find(n => n.id === d.noteId);
+          if (!note) return;
+
+          if (!d.hasDragged && Math.hypot(e.clientX - d.startX, e.clientY - d.startY) >= 4) {
+            d.hasDragged = true;
+            // Push pre-drag notes into Undo history cleanly
+            const savedCurrent = clip.notes;
+            clip.notes = d.preSnapshotNotes;
+            pushHistoryState(d.mode === 'resize' ? 'MIDIノート長さ変更' : 'MIDIノート移動');
+            clip.notes = savedCurrent;
+          }
+
+          if (!d.hasDragged) return;
+
+          if (d.mode === 'move') {
+            const deltaBeats = coords.beat - d.anchorBeat;
+            const targetStart = snapPianoRollBeat(Math.max(0, d.origStart + deltaBeats), false);
+            note.start = targetStart;
+            note.pitch = coords.pitch;
+            if (note.pitch !== d.lastAuditionPitch) {
+              d.lastAuditionPitch = note.pitch;
+              previewMidiNote(track, note.pitch, 0.18, note.velocity);
+            }
+            updatePianoRollStatusReadout(note.pitch, note.start, note.velocity);
+          } else if (d.mode === 'resize') {
+            const step = Math.max(0.125, Number(pianoRollState.snapBeats) || 0.25);
+            const targetEnd = snapPianoRollBeat(Math.max(d.origStart + step, coords.beat), false);
+            note.duration = Math.max(step, Number((targetEnd - d.origStart).toFixed(4)));
+            updatePianoRollStatusReadout(note.pitch, note.start, note.velocity);
+          }
+
+          renderPianoRoll();
+        });
+
+        const finishPianoRollPointer = (e) => {
+          const d = pianoRollState.dragInfo;
+          if (!d) return;
+          pianoRollState.dragInfo = null;
+          try { prCanvas.releasePointerCapture(e.pointerId); } catch (err) {}
+
+          const clip = getPianoRollClip();
+          if (!clip) return;
+
+          if (!d.hasDragged) {
+            // Simple click on existing note deletes it
+            pushHistoryState('MIDIノート削除');
+            clip.notes = (clip.notes || []).filter(n => n.id !== d.noteId);
+            commitPianoRollClipUpdate(clip);
+          } else {
+            commitPianoRollClipUpdate(clip);
+            renderTimeline();
+          }
+        };
+
+        prCanvas.addEventListener('pointerup', finishPianoRollPointer);
+        prCanvas.addEventListener('pointercancel', finishPianoRollPointer);
+        prCanvas.addEventListener('mouseleave', () => {
+          if (!pianoRollState.dragInfo && pianoRollState.hoverPitch !== null) {
+            pianoRollState.hoverPitch = null;
+            renderPianoRollKeys();
+            const clip = getPianoRollClip();
+            if (clip) renderPianoRollGrid(clip, getPianoRollTrack(clip));
+          }
+        });
+      }
+
+      const prModalEl = document.getElementById('piano-roll-modal');
+      const btnClosePr = document.getElementById('btn-close-piano-roll');
+      const btnClosePrBottom = document.getElementById('btn-close-piano-roll-bottom');
+      if (btnClosePr) btnClosePr.addEventListener('click', closePianoRoll);
+      if (btnClosePrBottom) btnClosePrBottom.addEventListener('click', closePianoRoll);
+      if (prModalEl) {
+        prModalEl.addEventListener('click', (e) => {
+          if (e.target === prModalEl) closePianoRoll();
+        });
+      }
+
+      const prSnapSelect = document.getElementById('piano-roll-snap');
+      if (prSnapSelect) {
+        prSnapSelect.addEventListener('change', (e) => {
+          const val = parseFloat(e.target.value);
+          if ([1, 0.5, 0.25].includes(val)) {
+            pianoRollState.snapBeats = val;
+            renderPianoRoll();
+          }
+        });
+      }
+
+      const prWaveformSelect = document.getElementById('piano-roll-waveform');
+      if (prWaveformSelect) {
+        prWaveformSelect.addEventListener('change', (e) => {
+          const clip = getPianoRollClip();
+          const track = getPianoRollTrack(clip);
+          if (!track) return;
+          if (isTrackLocked(track)) {
+            e.target.value = getTrackSynthWaveform(track);
+            showToast('ロック中のトラックは編集できません');
+            return;
+          }
+          pushHistoryState('MIDIシンセ波形変更');
+          track.synthWaveform = normalizeMidiWaveform(e.target.value);
+          renderTrackSidebar();
+          rescheduleIfPlaying();
+          markProjectDirty();
+        });
+      }
+
+      const btnExtendPianoRollBar = document.getElementById('btn-piano-roll-extend-bar');
+      if (btnExtendPianoRollBar) {
+        btnExtendPianoRollBar.addEventListener('click', () => {
+          const clip = getPianoRollClip();
+          if (!clip) return;
+          if (isClipOnLockedTrack(clip)) {
+            showToast('ロック中のトラックは編集できません');
+            return;
+          }
+          pushHistoryState('MIDIクリップ延長');
+          clip.duration = clip.duration + beatsToSeconds(4, state.bpm);
+          commitPianoRollClipUpdate(clip);
+          renderTimeline();
+          showToast('MIDIクリップを +1小節 (4拍) 延長しました');
+        });
+      }
 
       // Undo & Redo Buttons
       const btnUndo = document.getElementById('btn-undo');
@@ -11097,7 +12919,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         };
 
         return {
-          formatVersion: 1,
+          formatVersion: 2,
           appName: 'StudioWave Web DAW',
           exportedAt: new Date().toISOString(),
           project: {
@@ -11117,6 +12939,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
             waveformSettings: { ...wfSnapshot },
             tracks: state.tracks.map(t => ({
               id: t.id,
+              type: getTrackType(t),
               name: t.name,
               color: t.color ? { ...t.color } : { ...TRACK_COLORS[0] },
               volume: t.volume !== undefined ? Number(t.volume) : 1.0,
@@ -11126,28 +12949,41 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
               eqHighGain: Number(t.eqHighGain) || 0,
               mute: !!t.mute,
               solo: !!t.solo,
+              synthWaveform: getTrackSynthWaveform(t),
+              synthAdsr: getTrackSynthAdsr(t),
               fxList: (t.fxList || []).map(serializeFxPluginForProject),
               panAutomation: (t.panAutomation || []).map(p => ({ ...p })),
               panAutomationEnabled: t.panAutomationEnabled !== undefined ? !!t.panAutomationEnabled : true,
               showPanAutomation: !!t.showPanAutomation
             })),
-            clips: state.clips.map(c => ({
-              id: c.id,
-              trackId: c.trackId,
-              name: c.name,
-              startTimeInTimeline: Number(c.startTimeInTimeline) || 0,
-              duration: Number(c.duration) || 0.1,
-              offsetInBuffer: Number(c.offsetInBuffer) || 0,
-              gain: c.gain !== undefined ? Number(c.gain) : 1.0,
-              fadeIn: c.fadeIn !== undefined ? Math.max(0, Number(c.fadeIn) || 0) : 0,
-              fadeOut: c.fadeOut !== undefined ? Math.max(0, Number(c.fadeOut) || 0) : 0,
-              sourceFileName: c.demoRecipe ? null : (c.sourceFileName || c.name || null),
-              sourceFileSize: c.demoRecipe ? null : (c.sourceFileSize !== undefined ? c.sourceFileSize : null),
-              sourceLastModified: c.demoRecipe ? null : (c.sourceLastModified !== undefined ? c.sourceLastModified : null),
-              sourceCacheKey: c.demoRecipe ? null : (c.sourceCacheKey || null),
-              demoRecipe: c.demoRecipe ? JSON.parse(JSON.stringify(c.demoRecipe)) : null,
-              waveformSettings: c.waveformSettings ? { ...c.waveformSettings } : null
-            }))
+            clips: state.clips.map(c => {
+              const clipIsMidi = isMidiClip(c);
+              return {
+                id: c.id,
+                type: clipIsMidi ? 'midi' : 'audio',
+                trackId: c.trackId,
+                name: c.name,
+                startTimeInTimeline: Number(c.startTimeInTimeline) || 0,
+                duration: Number(c.duration) || 0.1,
+                offsetInBuffer: clipIsMidi ? 0 : (Number(c.offsetInBuffer) || 0),
+                gain: c.gain !== undefined ? Number(c.gain) : 1.0,
+                fadeIn: c.fadeIn !== undefined ? Math.max(0, Number(c.fadeIn) || 0) : 0,
+                fadeOut: c.fadeOut !== undefined ? Math.max(0, Number(c.fadeOut) || 0) : 0,
+                sourceFileName: (clipIsMidi || c.demoRecipe) ? null : (c.sourceFileName || c.name || null),
+                sourceFileSize: (clipIsMidi || c.demoRecipe) ? null : (c.sourceFileSize !== undefined ? c.sourceFileSize : null),
+                sourceLastModified: (clipIsMidi || c.demoRecipe) ? null : (c.sourceLastModified !== undefined ? c.sourceLastModified : null),
+                sourceCacheKey: (clipIsMidi || c.demoRecipe) ? null : (c.sourceCacheKey || null),
+                demoRecipe: clipIsMidi ? null : (c.demoRecipe ? JSON.parse(JSON.stringify(c.demoRecipe)) : null),
+                notes: clipIsMidi ? normalizeMidiNotes(c.notes || []).map(n => ({
+                  id: n.id,
+                  pitch: n.pitch,
+                  start: n.start,
+                  duration: n.duration,
+                  velocity: n.velocity
+                })) : undefined,
+                waveformSettings: c.waveformSettings ? { ...c.waveformSettings } : null
+              };
+            })
           }
         };
       }
@@ -11185,7 +13021,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
       function getMissingAudioEntries() {
         const grouped = new Map();
         state.clips.forEach(c => {
-          if (c.buffer || c.demoRecipe) return;
+          if (isMidiClip(c) || c.buffer || c.demoRecipe) return;
           const fileName = c.sourceFileName || c.name || 'unknown_audio';
           if (!grouped.has(fileName)) {
             grouped.set(fileName, { fileName, clipCount: 0, trackNames: new Set() });
@@ -11253,7 +13089,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           orderedNames.forEach(fileName => {
             const missingInfo = missingMap.get(fileName);
             const isLinked = !missingInfo;
-            const matchingClips = state.clips.filter(c => !c.demoRecipe && (c.sourceFileName || c.name) === fileName);
+            const matchingClips = state.clips.filter(c => !isMidiClip(c) && !c.demoRecipe && (c.sourceFileName || c.name) === fileName);
             const trackNames = Array.from(new Set(
               matchingClips
                 .map(c => state.tracks.find(t => t.id === c.trackId)?.name)
@@ -11339,7 +13175,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
         for (const file of files) {
           // Match by exact filename against missing audio files referenced in project clips
-          const hasMatchingClips = state.clips.some(c => !c.demoRecipe && (c.sourceFileName || c.name) === file.name);
+          const hasMatchingClips = state.clips.some(c => !isMidiClip(c) && !c.demoRecipe && (c.sourceFileName || c.name) === file.name);
           if (!hasMatchingClips && !missingSet.has(file.name)) {
             unmatchedNames.push(file.name);
             continue;
@@ -11359,7 +13195,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
             let matchedThisFile = false;
             state.clips.forEach(clip => {
-              if (!clip.demoRecipe && (clip.sourceFileName || clip.name) === file.name) {
+              if (!isMidiClip(clip) && !clip.demoRecipe && (clip.sourceFileName || clip.name) === file.name) {
                 clip.buffer = decoded;
                 clip.sourceFileName = clip.sourceFileName || file.name;
                 clip.sourceFileSize = file.size;
@@ -11412,13 +13248,28 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
       let pendingOverLimitProjectPayload = null;
 
-      function openTrackLimitWarningModal(parsedProject, trackCount) {
+      function openTrackLimitWarningModal(parsedProject, limitInfo) {
         const modal = document.getElementById('track-limit-warning-modal');
         const msgEl = document.getElementById('track-limit-warning-message');
         if (!modal || !msgEl) return;
         pendingOverLimitProjectPayload = parsedProject;
-        const lockedCount = trackCount - MAX_EDITABLE_TRACKS;
-        msgEl.innerHTML = `このプロジェクトには <strong style="color: #fbbf24;">${trackCount}トラック</strong> あります。Web版で編集できるのは <strong style="color: #38bdf8;">${MAX_EDITABLE_TRACKS}トラック</strong> までで、${MAX_EDITABLE_TRACKS + 1}番目以降（${lockedCount}トラック）はロックされます。`;
+
+        const audioCount = typeof limitInfo === 'object' && limitInfo !== null ? (Number(limitInfo.audioCount) || 0) : (Number(limitInfo) || 0);
+        const midiCount = typeof limitInfo === 'object' && limitInfo !== null ? (Number(limitInfo.midiCount) || 0) : 0;
+        const parts = [];
+        if (hasTrackLimit('audio') && audioCount > MAX_EDITABLE_TRACKS) {
+          const lockedAudio = audioCount - MAX_EDITABLE_TRACKS;
+          parts.push(`オーディオトラックが <strong style="color: #fbbf24;">${audioCount}本</strong>（Web版編集上限 <strong style="color: #38bdf8;">${MAX_EDITABLE_TRACKS}本</strong>・${MAX_EDITABLE_TRACKS + 1}本目以降 ${lockedAudio}本をロック）`);
+        }
+        if (hasTrackLimit('midi') && midiCount > MAX_EDITABLE_MIDI_TRACKS) {
+          const lockedMidi = midiCount - MAX_EDITABLE_MIDI_TRACKS;
+          parts.push(`MIDIトラックが <strong style="color: #fbbf24;">${midiCount}本</strong>（Web版編集上限 <strong style="color: #a78bfa;">${MAX_EDITABLE_MIDI_TRACKS}本</strong>・${MAX_EDITABLE_MIDI_TRACKS + 1}本目以降 ${lockedMidi}本をロック）`);
+        }
+        if (parts.length === 0) {
+          const totalCount = audioCount + midiCount;
+          parts.push(`トラック数が上限を超えています（合計 ${totalCount}本）`);
+        }
+        msgEl.innerHTML = `このプロジェクトには ${parts.join('、')} あります。上限を超えたトラックは削除されず、ロック状態で読み込まれます（表示・再生・書き出し・保存は可能です）。`;
         modal.classList.remove('waveform-popover-hidden');
       }
 
@@ -11433,7 +13284,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           showToast('無効なJSONファイルです');
           return;
         }
-        if (parsed.formatVersion !== 1) {
+        if (parsed.formatVersion !== 1 && parsed.formatVersion !== 2) {
           showToast(`未対応のプロジェクト形式バージョンです (formatVersion: ${parsed.formatVersion ?? '不明'})`);
           return;
         }
@@ -11444,11 +13295,19 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           return;
         }
 
-        // Warn user BEFORE opening if project exceeds MAX_EDITABLE_TRACKS
-        if (!options.skipLimitWarning && hasTrackLimit() && proj.tracks.length > MAX_EDITABLE_TRACKS) {
-          openTrackLimitWarningModal(parsed, proj.tracks.length);
+        const audioTracksInProj = proj.tracks.filter(t => !(t && (t.type === 'midi' || t.trackType === 'midi'))).length;
+        const midiTracksInProj = proj.tracks.length - audioTracksInProj;
+        const audioOverLimit = hasTrackLimit('audio') && audioTracksInProj > MAX_EDITABLE_TRACKS;
+        const midiOverLimit = hasTrackLimit('midi') && midiTracksInProj > MAX_EDITABLE_MIDI_TRACKS;
+
+        // Warn user BEFORE opening if project exceeds per-type editable track limits
+        if (!options.skipLimitWarning && (audioOverLimit || midiOverLimit)) {
+          openTrackLimitWarningModal(parsed, { audioCount: audioTracksInProj, midiCount: midiTracksInProj });
           return;
         }
+
+        closeAddTrackPopover();
+        closePianoRoll();
 
         const ctx = getAudioContext();
         stopPlayback();
@@ -11518,13 +13377,15 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           state.masterFxList = cloneFxList(masterCfg.fxList || []);
           rebuildMasterFXChain();
 
-          // Restore Tracks (preserving IDs, color, EQ, mix, FX, pan automation)
+          // Restore Tracks (preserving IDs, type, synth settings, color, EQ, mix, FX, pan automation)
           state.tracks = proj.tracks.map((tData, idx) => {
+            const trackType = (tData && (tData.type === 'midi' || tData.trackType === 'midi')) ? 'midi' : 'audio';
             const fallbackColor = TRACK_COLORS[idx % TRACK_COLORS.length];
             const color = (tData.color && tData.color.hex) ? { ...tData.color } : { ...fallbackColor };
             const normalizedTrack = {
               id: tData.id || ('track_' + Math.random().toString(36).substring(2, 9)),
-              name: tData.name || `Track ${idx + 1}`,
+              type: trackType,
+              name: tData.name || `${trackType === 'midi' ? 'MIDI' : 'Track'} ${idx + 1}`,
               color,
               volume: tData.volume !== undefined ? Number(tData.volume) : 1.0,
               pan: tData.pan !== undefined ? Number(tData.pan) : 0,
@@ -11533,6 +13394,8 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
               eqLowGain: Number(tData.eqLowGain) || 0,
               eqMidGain: Number(tData.eqMidGain) || 0,
               eqHighGain: Number(tData.eqHighGain) || 0,
+              synthWaveform: normalizeMidiWaveform(tData.synthWaveform),
+              synthAdsr: normalizeMidiAdsr(tData.synthAdsr),
               fxList: cloneFxList(tData.fxList || []),
               panAutomation: Array.isArray(tData.panAutomation) ? tData.panAutomation.map(p => ({
                 id: p.id || ('pa_' + Math.random().toString(36).substring(2, 9)),
@@ -11545,11 +13408,33 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
             return ensureTrackAudioNodes(normalizedTrack);
           });
 
-          // Restore Clips (regenerate synthetic demo audio or match external audio files via cache metadata)
+          // Restore Clips (MIDI clips with notes, synthetic demo audio, or external audio via cache metadata)
           proj.clips.forEach(cData => {
             const targetTrack = state.tracks.find(t => t.id === cData.trackId);
             if (!targetTrack) {
               skippedOrphanClipsCount += 1;
+              return;
+            }
+
+            const isIncomingMidi = cData.type === 'midi' || cData.clipType === 'midi' || isMidiTrack(targetTrack);
+            if (isIncomingMidi) {
+              addClipToTrack(
+                targetTrack.id,
+                cData.name || 'MIDI Pattern',
+                null,
+                Math.max(0, Number(cData.startTimeInTimeline) || 0),
+                0,
+                Math.max(0.05, Number(cData.duration) || 1.0),
+                {
+                  id: cData.id,
+                  type: 'midi',
+                  gain: cData.gain !== undefined ? Number(cData.gain) : 1.0,
+                  fadeIn: cData.fadeIn !== undefined ? Math.max(0, Number(cData.fadeIn) || 0) : 0,
+                  fadeOut: cData.fadeOut !== undefined ? Math.max(0, Number(cData.fadeOut) || 0) : 0,
+                  notes: normalizeMidiNotes(cData.notes || []),
+                  waveformSettings: cData.waveformSettings ? { ...cData.waveformSettings } : null
+                }
+              );
               return;
             }
 
@@ -11590,6 +13475,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
               Math.max(0.05, Number(cData.duration) || 1.0),
               {
                 id: cData.id,
+                type: 'audio',
                 gain: cData.gain !== undefined ? Number(cData.gain) : 1.0,
                 fadeIn: cData.fadeIn !== undefined ? Math.max(0, Number(cData.fadeIn) || 0) : 0,
                 fadeOut: cData.fadeOut !== undefined ? Math.max(0, Number(cData.fadeOut) || 0) : 0,
@@ -11820,21 +13706,29 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           e.preventDefault();
           if (state.isPlaying) pausePlayback();
           else startPlayback();
-        } else if (e.code === 'KeyV') {
+        } else if (!pianoRollState.isOpen && e.code === 'KeyV') {
           toolPointerBtn.click();
-        } else if (e.code === 'KeyC') {
+        } else if (!pianoRollState.isOpen && e.code === 'KeyC') {
           toolRazorBtn.click();
-        } else if (e.code === 'KeyL') {
+        } else if (!pianoRollState.isOpen && e.code === 'KeyL') {
           document.getElementById('btn-loop').click();
-        } else if (e.code === 'KeyA') {
+        } else if (!pianoRollState.isOpen && e.code === 'KeyA') {
           const btn = document.getElementById('btn-toggle-pan-automation');
           if (btn) btn.click();
-        } else if ((e.metaKey || e.ctrlKey) && e.code === 'KeyB') {
+        } else if (!pianoRollState.isOpen && (e.metaKey || e.ctrlKey) && e.code === 'KeyB') {
           e.preventDefault();
           if (state.selectedClipId) {
             splitClipAtTime(state.selectedClipId, state.currentPlayheadTime);
           }
         } else if (e.code === 'Escape') {
+          if (addTrackPopover && !addTrackPopover.classList.contains('hidden')) {
+            closeAddTrackPopover();
+            return;
+          }
+          if (pianoRollState.isOpen) {
+            closePianoRoll();
+            return;
+          }
           const demoOverwriteModal = document.getElementById('demo-overwrite-warning-modal');
           if (demoOverwriteModal && !demoOverwriteModal.classList.contains('waveform-popover-hidden')) {
             closeDemoOverwriteWarningModal();
@@ -11864,6 +13758,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           document.querySelectorAll('.audio-clip').forEach(c => c.classList.remove('selected'));
           updateClipPropertiesPanel();
         } else if (e.code === 'Backspace' || e.code === 'Delete') {
+          if (pianoRollState.isOpen) return;
           if (state.selectedClipId) {
             const targetClip = state.clips.find(c => c.id === state.selectedClipId);
             if (targetClip && isClipOnLockedTrack(targetClip)) {
@@ -11899,7 +13794,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
             const parsed = JSON.parse(rawAutosave);
             if (
               parsed &&
-              parsed.formatVersion === 1 &&
+              (parsed.formatVersion === 1 || parsed.formatVersion === 2) &&
               parsed.project &&
               Array.isArray(parsed.project.tracks) &&
               parsed.project.tracks.length > 0 &&
