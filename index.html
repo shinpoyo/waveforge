@@ -68,34 +68,107 @@
 
       /* Top Transport Bar */
       header#top-bar {
-        height: 56px;
+        min-height: 52px;
+        height: auto;
         background: var(--bg-header);
         border-bottom: 1px solid var(--border-subtle);
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
-        justify-content: space-between;
-        padding: 0 16px;
-        gap: 12px;
+        justify-content: flex-start;
+        padding: 6px 14px;
+        gap: 6px 10px;
         flex-shrink: 0;
         z-index: 50;
-        overflow-x: auto;
-        scrollbar-width: none;
+        width: 100%;
+        max-width: 100vw;
       }
-      header#top-bar::-webkit-scrollbar {
-        display: none;
+      .topbar-group {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+        max-width: 100%;
       }
-      header#top-bar > div,
-      header#top-bar > div > div,
-      header#top-bar > div > div > div:not(#waveform-settings-popover),
+      .topbar-project-export {
+        margin-left: auto;
+      }
       #autosave-status-indicator {
         flex-shrink: 0;
       }
-      header#top-bar > div > span,
-      header#top-bar > div > div > span,
       header#top-bar select,
       header#top-bar input {
         flex-shrink: 0;
         white-space: nowrap;
+      }
+      .btn-always-icon {
+        width: 32px;
+        padding: 0;
+      }
+      .segmented-btn.segmented-btn-icon {
+        padding: 0 8px;
+      }
+      .btn-export-compact {
+        padding: 0 9px;
+        font-size: 12px;
+        font-weight: 700;
+        gap: 5px;
+      }
+      @media (max-width: 1440px) {
+        header#top-bar {
+          padding: 6px 12px;
+          gap: 6px 8px;
+        }
+        .topbar-project-export {
+          margin-left: 0;
+        }
+        .btn-label-secondary,
+        .btn-shortcut-hint {
+          display: none;
+        }
+        #btn-loop,
+        #btn-demo-gen {
+          width: 32px;
+          padding: 0;
+        }
+        #btn-undo,
+        #btn-redo {
+          padding: 0 8px;
+        }
+      }
+      @media (max-width: 1060px) {
+        header#top-bar {
+          padding: 6px 10px;
+          gap: 5px 6px;
+        }
+        .topbar-group {
+          gap: 5px;
+        }
+        .topbar-brand-text,
+        .lcd-time,
+        .btn-label-tool,
+        #play-text,
+        #autosave-status-text {
+          display: none;
+        }
+        #btn-play {
+          padding: 0 10px;
+        }
+        #tool-pointer,
+        #tool-razor {
+          padding: 0 8px;
+        }
+        .lcd-display {
+          padding: 4px 8px;
+        }
+        #autosave-status-indicator {
+          padding: 0 8px;
+        }
+        .topbar-dsp-actions .btn {
+          padding: 0 8px;
+          font-size: 11.5px;
+          gap: 4px;
+        }
       }
       .audio-clip.unlinked {
         border-style: dashed !important;
@@ -1349,6 +1422,41 @@
         transform: none;
         filter: none;
       }
+      .clip-piano-roll-btn {
+        display: none;
+        position: absolute;
+        left: 50%;
+        top: calc(50% + 10px);
+        transform: translate(-50%, -50%);
+        z-index: 20;
+        padding: 3px 8px;
+        border-radius: 4px;
+        border: 1px solid #a78bfa;
+        background: rgba(46, 16, 101, 0.92);
+        color: #ede9fe;
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 1.2;
+        white-space: nowrap;
+        max-width: calc(100% - 16px);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        cursor: pointer;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(2px);
+        transition: background 0.12s, border-color 0.12s, transform 0.12s;
+      }
+      .clip-piano-roll-btn:hover {
+        background: #5b21b6;
+        border-color: #ddd6fe;
+        color: #ffffff;
+        transform: translate(-50%, -50%) scale(1.04);
+      }
+      .audio-clip.midi-clip.selected .clip-piano-roll-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+      }
 
       /* Playhead */
       #playhead-line {
@@ -1776,8 +1884,8 @@
     <!-- Top Bar: Transports & Global Controls -->
     <header id="top-bar">
       <!-- Brand & Project Info -->
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <div class="topbar-group topbar-brand" style="gap: 8px;" title="StudioWave Web DAW">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
           <path d="M2 10v3"/>
           <path d="M6 6v11"/>
           <path d="M10 3v18"/>
@@ -1785,11 +1893,11 @@
           <path d="M18 5v13"/>
           <path d="M22 10v3"/>
         </svg>
-        <span style="font-weight: 700; font-size: 16px; letter-spacing: -0.3px; color: #f8fafc;">StudioWave</span>
+        <span class="topbar-brand-text" style="font-weight: 700; font-size: 16px; letter-spacing: -0.3px; color: #f8fafc; white-space: nowrap;">StudioWave</span>
       </div>
 
       <!-- Transport Controls -->
-      <div style="display: flex; align-items: center; gap: 8px;">
+      <div class="topbar-group topbar-transport">
         <button id="btn-stop" class="btn btn-icon" title="停止して先頭に戻る (Return)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
             <rect x="4" y="4" width="16" height="16" rx="2"/>
@@ -1812,23 +1920,23 @@
             <polyline points="7 23 3 19 7 15"/>
             <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
           </svg>
-          <span>LOOP</span>
+          <span class="btn-label-secondary">LOOP</span>
         </button>
 
         <!-- LCD Time Display -->
-        <div class="lcd-display">
+        <div class="lcd-display" title="再生位置（小節 : 拍 : ティック / 秒）">
           <div id="lcd-bars" class="lcd-bars font-mono-num">001 : 01 : 000</div>
           <div id="lcd-time" class="lcd-time font-mono-num">00:00.000</div>
         </div>
 
         <!-- BPM & Signature -->
-        <div style="display: flex; align-items: center; gap: 6px; background: #0d121c; border: 1px solid var(--border-subtle); border-radius: 6px; padding: 2px 8px;">
+        <div style="display: flex; align-items: center; gap: 6px; background: #0d121c; border: 1px solid var(--border-subtle); border-radius: 6px; padding: 2px 8px; flex-shrink: 0;" title="テンポ (BPM 40〜240)">
           <span style="font-size: 11px; color: var(--text-dim); font-weight: 600;">BPM</span>
-          <input id="input-bpm" type="number" min="40" max="240" value="120" class="font-mono-num" style="width: 48px; background: transparent; border: none; color: #38bdf8; font-weight: 700; font-size: 14px; outline: none; text-align: center;"/>
+          <input id="input-bpm" type="number" min="40" max="240" value="120" class="font-mono-num" style="width: 44px; background: transparent; border: none; color: #38bdf8; font-weight: 700; font-size: 14px; outline: none; text-align: center;"/>
         </div>
 
         <!-- Grid Snap -->
-        <div style="display: flex; align-items: center; gap: 4px;">
+        <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;" title="タイムラインのスナップ間隔">
           <span style="font-size: 11px; color: var(--text-dim); font-weight: 600;">SNAP</span>
           <select id="select-snap" style="background: #0d121c; border: 1px solid var(--border-subtle); color: var(--text-main); font-size: 12px; border-radius: 6px; padding: 4px 6px; outline: none;">
             <option value="1">1 Bar</option>
@@ -1840,15 +1948,15 @@
         </div>
       </div>
 
-      <!-- Tool Palette & Action Buttons -->
-      <div style="display: flex; align-items: center; gap: 8px;">
+      <!-- Tool Selection, History & Zoom -->
+      <div class="topbar-group topbar-tools">
         <!-- Tool selection -->
         <div class="segmented-group">
           <button id="tool-pointer" class="segmented-btn active" title="選択 / 移動 / トリム ツール (V)">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
               <path d="m3 3 7 18 3-7 7-3L3 3z"/>
             </svg>
-            <span>選択 (V)</span>
+            <span class="btn-label-tool">選択<span class="btn-shortcut-hint"> (V)</span></span>
           </button>
           <button id="tool-razor" class="segmented-btn" title="分割 / カミソリ ツール (C)">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
@@ -1858,7 +1966,7 @@
               <circle cx="6" cy="18" r="3"/>
               <path d="M14.8 14.8 20 20"/>
             </svg>
-            <span>分割 (C)</span>
+            <span class="btn-label-tool">分割<span class="btn-shortcut-hint"> (C)</span></span>
           </button>
         </div>
 
@@ -1869,14 +1977,14 @@
               <path d="M3 7v6h6"/>
               <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
             </svg>
-            <span>Undo</span>
+            <span class="btn-label-secondary">Undo</span>
           </button>
           <button id="btn-redo" class="segmented-btn" title="やり直す (Ctrl+Shift+Z)" disabled>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 7v6h-6"/>
               <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/>
             </svg>
-            <span>Redo</span>
+            <span class="btn-label-secondary">Redo</span>
           </button>
         </div>
 
@@ -1886,9 +1994,12 @@
           <span id="zoom-level" class="font-mono-num" style="font-size: 11px; padding: 0 4px; display: flex; align-items: center; color: var(--text-dim);">100%</span>
           <button id="btn-zoom-in" class="segmented-btn" title="ズームイン (+)">+</button>
         </div>
+      </div>
 
+      <!-- Waveform, Pan Automation, Auto Leveling & Demo -->
+      <div class="topbar-group topbar-dsp-actions">
         <!-- Waveform Display Settings Popover (#timeline-content) -->
-        <div style="position: relative;">
+        <div style="position: relative; flex-shrink: 0;">
           <button id="btn-waveform-settings" class="btn" title="波形表示設定: ピーク値と中心線の不透明度・鮮明度調整 (#timeline-content)" style="border-color: #0284c7; color: #bae6fd; background: #0c4a6e;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
               <path d="M2 10v4M6 6v12M10 3v18M14 7v10M18 5v14M22 10v4"/>
@@ -1981,7 +2092,7 @@
         </button>
 
         <!-- One-Click Volume Leveling (Track & Master) -->
-        <div style="display: flex; align-items: center; gap: 4px;">
+        <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
           <button id="btn-auto-track" class="btn" style="border-color: #6366f1; color: #e0e7ff; background: #1e1b4b;" title="選択トラックのクリップ音量をワンクリックで自動最適化 (-1.0 dBFS)">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
@@ -2000,7 +2111,7 @@
         </div>
 
         <!-- Demo Synth Audio Generator -->
-        <button id="btn-demo-gen" class="btn btn-demo" title="Web Audio APIでドラム、ベース、シンセコードのデモ音源を自動生成">
+        <button id="btn-demo-gen" class="btn btn-demo" title="デモトラック生成（Web Audio APIでドラム、ベース、シンセコードのデモ音源を自動生成）">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 2v4"/>
             <path d="m4.93 4.93 2.83 2.83"/>
@@ -2011,52 +2122,51 @@
             <path d="M18 12h4"/>
             <path d="m16.24 7.76 2.83-2.83"/>
           </svg>
-          <span>デモトラック生成</span>
+          <span class="btn-label-secondary">デモトラック生成</span>
         </button>
+      </div>
 
-        <!-- Import Audio File -->
-        <label class="btn" style="cursor: pointer;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <!-- Import, Project New/Save/Load, Autosave & Export -->
+      <div class="topbar-group topbar-project-export">
+        <!-- Import Audio File (Icon-only with tooltip) -->
+        <label class="btn btn-always-icon" style="cursor: pointer;" title="音声ファイルを読込（WAV / MP3 / OGG等をタイムラインに追加）">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
             <polyline points="17 8 12 3 7 8"/>
             <line x1="12" y1="3" x2="12" y2="15"/>
           </svg>
-          <span>音声ファイル読込</span>
           <input id="input-audio-file" type="file" accept="audio/*" multiple style="display: none;"/>
         </label>
 
-        <!-- Project New / Save / Load (JSON Export & Import) -->
+        <!-- Project New / Save / Load (Icon-only with tooltips) -->
         <div class="segmented-group" title="プロジェクトの新規作成・JSON保存と読み込み">
-          <button id="btn-new-project" class="segmented-btn" style="color: #fde68a;" title="現在のプロジェクトを破棄して新規プロジェクトを開始">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
+          <button id="btn-new-project" class="segmented-btn segmented-btn-icon" style="color: #fde68a;" title="新規プロジェクトを作成（現在のプロジェクトを破棄して初期化）">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
               <polyline points="14 2 14 8 20 8"/>
               <line x1="12" y1="18" x2="12" y2="12"/>
               <line x1="9" y1="15" x2="15" y2="15"/>
             </svg>
-            <span>新規プロジェクト</span>
           </button>
-          <button id="btn-save-project" class="segmented-btn" style="color: #93c5fd;" title="プロジェクト全体（トラック・クリップ配置・FX・オートメーション等）をJSONファイルとして保存 (Ctrl+S)">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
+          <button id="btn-save-project" class="segmented-btn segmented-btn-icon" style="color: #93c5fd;" title="プロジェクト全体（トラック・クリップ配置・FX・オートメーション等）をJSONファイルとして保存 (Ctrl+S)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
               <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
               <polyline points="17 21 17 13 7 13 7 21"/>
               <polyline points="7 3 7 8 15 8"/>
             </svg>
-            <span>保存</span>
           </button>
-          <label class="segmented-btn" style="cursor: pointer; color: #a7f3d0;" title="保存したプロジェクトJSONファイルを読み込んで復元">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
+          <label class="segmented-btn segmented-btn-icon" style="cursor: pointer; color: #a7f3d0;" title="保存したプロジェクトJSONファイルを読み込んで復元">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
               <path d="M12 11v6"/>
               <polyline points="9 14 12 11 15 14"/>
             </svg>
-            <span>読込</span>
             <input id="input-project-file" type="file" accept=".json,application/json" style="display: none;"/>
           </label>
         </div>
 
         <!-- Auto-save Status Indicator -->
-        <div id="autosave-status-indicator" class="font-mono-num" style="display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 9px; border-radius: 6px; background: #0d121c; border: 1px solid var(--border-subtle); font-size: 11px; color: #94a3b8; white-space: nowrap;" title="ブラウザ(localStorage)への自動保存ステータス">
+        <div id="autosave-status-indicator" class="font-mono-num" style="display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 9px; border-radius: 6px; background: #0d121c; border: 1px solid var(--border-subtle); font-size: 11px; color: #94a3b8; white-space: nowrap;" title="ブラウザ(localStorage)への自動保存ステータス: 自動保存待機">
           <span id="autosave-dot" style="width: 6px; height: 6px; border-radius: 50%; background: #64748b; flex-shrink: 0;"></span>
           <span id="autosave-status-text">自動保存待機</span>
         </div>
@@ -2067,28 +2177,28 @@
         </button>
 
         <!-- Export Mixdown WAV & MP3 -->
-        <div style="display: inline-flex; align-items: center; gap: 4px;">
-          <button id="btn-export-wav" class="btn btn-accent" title="タイムラインの全トラックをOfflineAudioContextでレンダリングしてWAV書き出し">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <div style="display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;">
+          <button id="btn-export-wav" class="btn btn-accent btn-export-compact" title="タイムラインの全トラックをOfflineAudioContextでレンダリングしてWAV書き出し">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="7 10 12 15 17 10"/>
               <line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
-            <span>Export WAV</span>
+            <span>WAV</span>
           </button>
-          <div style="display: inline-flex; align-items: center; background: #0f172a; border: 1px solid #0284c7; border-radius: 6px; overflow: hidden; height: 28px;">
+          <div style="display: inline-flex; align-items: center; background: #0f172a; border: 1px solid #0284c7; border-radius: 6px; overflow: hidden; height: 32px;">
             <select id="select-mp3-bitrate" class="font-mono-num" style="height: 100%; background: #0b1322; color: #7dd3fc; border: none; border-right: 1px solid #1e3a5f; padding: 0 5px; font-size: 10px; font-weight: 700; outline: none; cursor: pointer;" title="MP3書き出しビットレート">
               <option value="128">128k</option>
               <option value="192" selected>192k</option>
               <option value="320">320k</option>
             </select>
-            <button id="btn-export-mp3" class="btn" style="height: 100%; border: none; border-radius: 0; background: #0369a1; color: #ffffff; padding: 0 9px; font-size: 11px; font-weight: 700;" title="タイムラインの全トラックをOfflineAudioContextでレンダリングしてMP3書き出し (内蔵オフラインエンコーダ)">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <button id="btn-export-mp3" class="btn btn-export-compact" style="height: 100%; border: none; border-radius: 0; background: #0369a1; color: #ffffff;" title="タイムラインの全トラックをOfflineAudioContextでレンダリングしてMP3書き出し (内蔵オフラインエンコーダ)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                 <polyline points="7 10 12 15 17 10"/>
                 <line x1="12" y1="15" x2="12" y2="3"/>
               </svg>
-              <span>Export MP3</span>
+              <span>MP3</span>
             </button>
           </div>
         </div>
@@ -3040,7 +3150,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
       // --- Edition Track Limit Configuration ---
       // Web版はオーディオ8トラック / MIDI 50トラックまで編集可能
-      const APP_VERSION = '1.2.0';
+      const APP_VERSION = '1.2.2';
       const MAX_EDITABLE_TRACKS = 8;
       const MAX_EDITABLE_MIDI_TRACKS = 50;
       const MAX_MIDI_POLYPHONY = 128;
@@ -3464,18 +3574,22 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         if (isProjectDirty) {
           dot.style.background = '#f59e0b';
           textEl.textContent = '未保存の変更あり';
+          indicator.title = 'ブラウザ(localStorage)への自動保存ステータス: 未保存の変更あり';
           indicator.style.color = '#fde68a';
           indicator.style.borderColor = '#92400e';
           indicator.style.background = '#2a1606';
         } else if (lastAutosaveTime) {
+          const hhmm = formatAutosaveHHMM(lastAutosaveTime);
           dot.style.background = '#10b981';
-          textEl.textContent = `自動保存済み ${formatAutosaveHHMM(lastAutosaveTime)}`;
+          textEl.textContent = `自動保存済み ${hhmm}`;
+          indicator.title = `ブラウザ(localStorage)への自動保存ステータス: 自動保存済み ${hhmm}`;
           indicator.style.color = '#6ee7b7';
           indicator.style.borderColor = '#065f46';
           indicator.style.background = '#071b16';
         } else {
           dot.style.background = '#64748b';
           textEl.textContent = '自動保存待機';
+          indicator.title = 'ブラウザ(localStorage)への自動保存ステータス: 自動保存待機';
           indicator.style.color = '#94a3b8';
           indicator.style.borderColor = 'var(--border-subtle)';
           indicator.style.background = '#0d121c';
@@ -10034,7 +10148,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           const muteBtn = document.createElement('button');
           muteBtn.className = `mute-btn ${track.mute ? 'active' : ''}`;
           muteBtn.textContent = 'M';
-          muteBtn.title = locked ? 'Mute (ロック中・変更不可)' : 'Mute';
+          muteBtn.title = locked ? 'トラックをミュート（ロック中・変更不可）' : 'トラックをミュート';
           muteBtn.disabled = locked;
           muteBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -10048,7 +10162,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           const soloBtn = document.createElement('button');
           soloBtn.className = `solo-btn ${track.solo ? 'active' : ''}`;
           soloBtn.textContent = 'S';
-          soloBtn.title = locked ? 'Solo (ロック中・変更不可)' : 'Solo';
+          soloBtn.title = locked ? 'トラックをソロ再生（ロック中・変更不可）' : 'トラックをソロ再生';
           soloBtn.disabled = locked;
           soloBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -10079,7 +10193,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           dupTrackBtn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
           dupTrackBtn.title = locked
             ? 'ロック中のトラックは複製できません'
-            : (!canAddMoreEditableTracks(getTrackType(track)) ? getTrackLimitReachedMessage(getTrackType(track)) : 'このトラックを複製 (設定・EQ・FX・クリップを含む)');
+            : (!canAddMoreEditableTracks(getTrackType(track)) ? getTrackLimitReachedMessage(getTrackType(track)) : 'トラックを複製（設定・EQ・FX・クリップを含む）');
           dupTrackBtn.style.borderColor = '#0284c7';
           dupTrackBtn.style.color = '#7dd3fc';
           dupTrackBtn.style.background = '#082f49';
@@ -10095,8 +10209,8 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           delTrackBtn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>`;
           delTrackBtn.disabled = locked;
           delTrackBtn.title = locked
-            ? 'ロック中のトラックは削除できません（Web版の上限を超えたトラックは保護されます）'
-            : 'このトラックを削除';
+            ? 'トラックを削除（ロック中・上限超過トラックは削除不可）'
+            : 'トラックを削除';
           delTrackBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             if (locked) {
@@ -10111,7 +10225,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           moveUpBtn.className = 'mute-btn btn-move-track btn-move-track-up';
           moveUpBtn.textContent = '▲';
           moveUpBtn.disabled = trackIdx === 0;
-          moveUpBtn.title = trackIdx === 0 ? '先頭トラックのため上に移動できません' : 'トラックを上に移動';
+          moveUpBtn.title = trackIdx === 0 ? '先頭トラックのため上へ移動できません' : 'トラックを上へ移動';
           moveUpBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             moveTrack(track.id, -1);
@@ -10121,7 +10235,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           moveDownBtn.className = 'mute-btn btn-move-track btn-move-track-down';
           moveDownBtn.textContent = '▼';
           moveDownBtn.disabled = trackIdx === state.tracks.length - 1;
-          moveDownBtn.title = trackIdx === state.tracks.length - 1 ? '末尾トラックのため下に移動できません' : 'トラックを下に移動';
+          moveDownBtn.title = trackIdx === state.tracks.length - 1 ? '末尾トラックのため下へ移動できません' : 'トラックを下へ移動';
           moveDownBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             moveTrack(track.id, 1);
@@ -11328,16 +11442,42 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         // Draw waveform or MIDI notes on next tick
         setTimeout(() => drawClipWaveform(canvas, clip, track), 0);
 
-        // --- Clip Interaction (Move, Trim, Fade, Split, Piano Roll Double-Click) ---
+        // --- Clip Interaction (Move, Trim, Fade, Split, Piano Roll Double-Click & Button) ---
         if (midiClip) {
-          el.title = 'ダブルクリックでピアノロールエディタを開く';
-          el.addEventListener('dblclick', (e) => {
-            if (e.target === leftHandle || e.target === rightHandle || e.target === leftFadeHandle || e.target === rightFadeHandle) return;
+          el.title = locked
+            ? '🔒 ロック中（ダブルクリック: ピアノロール閲覧のみ）'
+            : 'ダブルクリック: ピアノロール編集 / Ctrl+D: 複製';
+
+          const pianoRollOverlayBtn = document.createElement('button');
+          pianoRollOverlayBtn.type = 'button';
+          pianoRollOverlayBtn.className = 'clip-piano-roll-btn';
+          pianoRollOverlayBtn.textContent = '🎹 ピアノロール';
+          pianoRollOverlayBtn.title = 'ピアノロールでノートを編集';
+          pianoRollOverlayBtn.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+          });
+          pianoRollOverlayBtn.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+          });
+          pianoRollOverlayBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             state.selectedClipId = clip.id;
             state.selectedTrackId = clip.trackId;
             openPianoRoll(clip.id);
           });
+          el.appendChild(pianoRollOverlayBtn);
+
+          el.addEventListener('dblclick', (e) => {
+            if (e.target === leftHandle || e.target === rightHandle || e.target === leftFadeHandle || e.target === rightFadeHandle || e.target === pianoRollOverlayBtn) return;
+            e.stopPropagation();
+            state.selectedClipId = clip.id;
+            state.selectedTrackId = clip.trackId;
+            openPianoRoll(clip.id);
+          });
+        } else {
+          el.title = locked
+            ? '🔒 ロック中（再生のみ・編集不可）'
+            : '端ドラッグ: フェード / 分割ツール: 分割 / Ctrl+D: 複製';
         }
 
         // Top-left / top-right fade corner drag
