@@ -444,7 +444,7 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 8px;
+        gap: 5px;
       }
       .track-name-input {
         background: transparent;
@@ -463,7 +463,7 @@
       }
       .track-btn-group {
         display: flex;
-        gap: 3px;
+        gap: 2px;
         flex-shrink: 0;
         align-items: center;
       }
@@ -495,6 +495,53 @@
         background: #d97706;
         border-color: #f59e0b;
         color: #ffffff;
+      }
+      .btn-delete-track {
+        border-color: #7f1d1d;
+        color: #fca5a5;
+        background: #2b0b12;
+      }
+      .btn-delete-track:hover:not(:disabled) {
+        border-color: #ef4444;
+        color: #ffffff;
+        background: #7f1d1d;
+      }
+      .btn-move-track {
+        width: 18px;
+        height: 22px;
+        padding: 0;
+        font-size: 8px;
+        line-height: 1;
+        font-weight: 700;
+        border-radius: 4px;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-surface);
+        color: var(--text-muted);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+        flex-shrink: 0;
+      }
+      .btn-move-track:hover:not(:disabled) {
+        border-color: #38bdf8;
+        color: #ffffff;
+        background: #172133;
+      }
+      .btn-move-track:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+      .track-control-card.locked .btn-move-track:not(:disabled) {
+        opacity: 1;
+        cursor: pointer;
+        border-color: #334155;
+        color: #cbd5e1;
+      }
+      .track-control-card.locked .btn-move-track:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
       }
       .fx-rack-toggle-btn {
         height: 24px;
@@ -1978,8 +2025,17 @@
           <input id="input-audio-file" type="file" accept="audio/*" multiple style="display: none;"/>
         </label>
 
-        <!-- Project Save / Load (JSON Export & Import) -->
-        <div class="segmented-group" title="プロジェクトのJSON保存と読み込み">
+        <!-- Project New / Save / Load (JSON Export & Import) -->
+        <div class="segmented-group" title="プロジェクトの新規作成・JSON保存と読み込み">
+          <button id="btn-new-project" class="segmented-btn" style="color: #fde68a;" title="現在のプロジェクトを破棄して新規プロジェクトを開始">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="12" y1="18" x2="12" y2="12"/>
+              <line x1="9" y1="15" x2="15" y2="15"/>
+            </svg>
+            <span>新規プロジェクト</span>
+          </button>
           <button id="btn-save-project" class="segmented-btn" style="color: #93c5fd;" title="プロジェクト全体（トラック・クリップ配置・FX・オートメーション等）をJSONファイルとして保存 (Ctrl+S)">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
               <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
@@ -2546,6 +2602,52 @@
       </div>
     </div>
 
+    <!-- Delete Track Confirmation Modal -->
+    <div id="delete-track-confirm-modal" class="waveform-popover-hidden" style="position: fixed; inset: 0; background: rgba(3, 7, 18, 0.86); backdrop-filter: blur(6px); z-index: 246; display: flex; align-items: center; justify-content: center;">
+      <div style="background: #0b111e; border: 1px solid #ef4444; border-radius: 12px; width: 480px; max-width: 94vw; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.92);">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid #1e293b; background: #1a0c10;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: #450a0a; border: 1px solid #ef4444; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;">🗑️</div>
+          <div>
+            <div style="font-weight: 700; color: #fee2e2; font-size: 14px;">トラック削除の確認</div>
+            <div style="font-size: 11px; color: #f87171; font-weight: 600;">トラックと含まれるすべてのクリップが完全に削除されます</div>
+          </div>
+        </div>
+        <div style="padding: 16px 18px; font-size: 12px; color: #e2e8f0; line-height: 1.65;">
+          <p id="delete-track-confirm-message" style="margin: 0 0 10px 0;"></p>
+          <div id="delete-track-confirm-details" style="background: #080d18; border: 1px solid #1e293b; border-radius: 8px; padding: 10px 12px; font-size: 11px; color: #94a3b8; line-height: 1.55;"></div>
+        </div>
+          <div style="display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid #1e293b; background: #080c16;">
+            <button id="btn-cancel-delete-track" class="btn" style="height: 30px; padding: 0 14px; font-size: 11px;">キャンセル</button>
+            <button id="btn-confirm-delete-track" class="btn" style="height: 30px; padding: 0 14px; font-size: 11px; background: #b91c1c; border-color: #ef4444; color: #ffffff; font-weight: 700;">削除する</button>
+          </div>
+        </div>
+      </div>
+
+    <!-- New Project Confirmation Modal -->
+    <div id="new-project-confirm-modal" class="waveform-popover-hidden" style="position: fixed; inset: 0; background: rgba(3, 7, 18, 0.86); backdrop-filter: blur(6px); z-index: 246; display: flex; align-items: center; justify-content: center;">
+      <div style="background: #0b111e; border: 1px solid #ef4444; border-radius: 12px; width: 500px; max-width: 94vw; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.92);">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid #1e293b; background: #1a0c10;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: #450a0a; border: 1px solid #ef4444; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;">📄</div>
+          <div>
+            <div style="font-weight: 700; color: #fee2e2; font-size: 14px;">新規プロジェクトの作成確認</div>
+            <div style="font-size: 11px; color: #f87171; font-weight: 600;">ロック中のトラックを含む現在のプロジェクト全体が消去されます</div>
+          </div>
+        </div>
+        <div style="padding: 16px 18px; font-size: 12px; color: #e2e8f0; line-height: 1.65;">
+          <p id="new-project-confirm-message" style="margin: 0 0 10px 0;"></p>
+          <div style="background: #080d18; border: 1px solid #1e293b; border-radius: 8px; padding: 10px 12px; font-size: 11px; color: #94a3b8; line-height: 1.55;">
+            <div>・ロック状態のトラックを含む、現在のすべてのトラック・クリップ・ミキサー設定・FX・オートメーションが完全に消去されます</div>
+            <div>・Undo / Redo 履歴およびブラウザ内の自動保存データも空の状態で上書きされます（元に戻せません）</div>
+            <div>・残したいデータがある場合は「キャンセル」して、上部ツールバーの「保存」ボタンからJSONファイルへ書き出してください</div>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid #1e293b; background: #080c16;">
+          <button id="btn-cancel-new-project" class="btn" style="height: 30px; padding: 0 14px; font-size: 11px;">キャンセル</button>
+          <button id="btn-confirm-new-project" class="btn" style="height: 30px; padding: 0 14px; font-size: 11px; background: #b91c1c; border-color: #ef4444; color: #ffffff; font-weight: 700;">すべて消去して新規作成</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Piano Roll Editor Modal -->
     <div id="piano-roll-modal" class="waveform-popover-hidden">
       <div class="piano-roll-window">
@@ -2938,6 +3040,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
       // --- Edition Track Limit Configuration ---
       // Web版はオーディオ8トラック / MIDI 50トラックまで編集可能
+      const APP_VERSION = '1.2.0';
       const MAX_EDITABLE_TRACKS = 8;
       const MAX_EDITABLE_MIDI_TRACKS = 50;
       const MAX_MIDI_POLYPHONY = 128;
@@ -7587,6 +7690,345 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         return newTrack;
       }
 
+      // Stop active audio sources & MIDI voices belonging to a specific track safely
+      function stopPlaybackForTrack(trackId, clipIdSet = new Set()) {
+        const ctx = state.audioCtx;
+        const stopAt = ctx ? Math.max(0, ctx.currentTime) : 0;
+
+        if (Array.isArray(state.activeSources) && state.activeSources.length > 0) {
+          const remainingSources = [];
+          for (let i = 0; i < state.activeSources.length; i++) {
+            const item = state.activeSources[i];
+            if (item && clipIdSet.has(item.clipId)) {
+              try {
+                if (item.gainNode && item.gainNode.gain && ctx) {
+                  item.gainNode.gain.cancelScheduledValues(stopAt);
+                  item.gainNode.gain.linearRampToValueAtTime(0.0001, stopAt + 0.005);
+                }
+                if (item.source && typeof item.source.stop === 'function') {
+                  item.source.stop(stopAt + 0.006);
+                }
+              } catch (e) {}
+            } else {
+              remainingSources.push(item);
+            }
+          }
+          state.activeSources = remainingSources;
+        }
+
+        if (Array.isArray(state.activeMidiVoices) && state.activeMidiVoices.length > 0) {
+          const remainingVoices = [];
+          for (let i = 0; i < state.activeMidiVoices.length; i++) {
+            const v = state.activeMidiVoices[i];
+            if (v && (v.trackId === trackId || (v.clipId && clipIdSet.has(v.clipId)))) {
+              if (!v.stolen) {
+                v.stolen = true;
+                try {
+                  if (v.gainNode && v.gainNode.gain && ctx) {
+                    v.gainNode.gain.cancelScheduledValues(stopAt);
+                    v.gainNode.gain.linearRampToValueAtTime(0.0001, stopAt + 0.005);
+                  }
+                  if (v.osc && typeof v.osc.stop === 'function') {
+                    v.osc.stop(stopAt + 0.006);
+                  }
+                } catch (e) {}
+              }
+            } else if (v) {
+              remainingVoices.push(v);
+            }
+          }
+          state.activeMidiVoices = remainingVoices;
+        }
+
+        clipIdSet.forEach(cid => {
+          midiLookaheadState.clipGainMap.delete(cid);
+          const prefix = `${cid}:`;
+          for (const key of Array.from(midiLookaheadState.scheduledNoteKeys)) {
+            if (key.startsWith(prefix)) {
+              midiLookaheadState.scheduledNoteKeys.delete(key);
+            }
+          }
+        });
+      }
+
+      let pendingDeleteTrackId = null;
+
+      function openDeleteTrackConfirmModal(trackId) {
+        const trackIdx = state.tracks.findIndex(t => t.id === trackId);
+        if (trackIdx === -1) return;
+        if (isTrackLocked(trackIdx)) {
+          showToast('ロック中のトラックは削除できません');
+          return;
+        }
+        const track = state.tracks[trackIdx];
+        const trackClips = state.clips.filter(c => c.trackId === track.id);
+        const midiTrack = isMidiTrack(track);
+        const totalNotes = midiTrack
+          ? trackClips.reduce((sum, c) => sum + (Array.isArray(c.notes) ? c.notes.length : 0), 0)
+          : 0;
+
+        pendingDeleteTrackId = track.id;
+        const modal = document.getElementById('delete-track-confirm-modal');
+        const msgEl = document.getElementById('delete-track-confirm-message');
+        const detailsEl = document.getElementById('delete-track-confirm-details');
+
+        if (msgEl) {
+          msgEl.innerHTML = `<strong style="color: #f8fafc;">「${escapeHtml(track.name)}」</strong>（${midiTrack ? 'MIDIトラック' : 'オーディオトラック'}）を削除してもよろしいですか？`;
+        }
+        if (detailsEl) {
+          const clipLine = midiTrack
+            ? `・このトラックに含まれるすべてのクリップ（ノートを含むMIDIクリップ <strong style="color: #fca5a5;">${trackClips.length} 件</strong> / 合計 <strong style="color: #fca5a5;">${totalNotes} ノート</strong>）がすべて消去されます`
+            : `・このトラックに含まれるすべてのクリップ（<strong style="color: #fca5a5;">${trackClips.length} 件</strong>）がすべて消去されます`;
+          detailsEl.innerHTML = `
+            <div>${clipLine}</div>
+            <div>・トラック設定（音量・パン・3バンドEQ・FX・オートメーション）も取り除かれます</div>
+            <div>・削除後に保存または自動保存されたデータにも反映されます（Undo で戻すことも可能です）</div>
+          `;
+        }
+
+        if (modal) modal.classList.remove('waveform-popover-hidden');
+      }
+
+      function closeDeleteTrackConfirmModal() {
+        const modal = document.getElementById('delete-track-confirm-modal');
+        if (modal) modal.classList.add('waveform-popover-hidden');
+        pendingDeleteTrackId = null;
+      }
+
+      function deleteTrack(trackId) {
+        const trackIdx = state.tracks.findIndex(t => t.id === trackId);
+        if (trackIdx === -1) return false;
+        if (isTrackLocked(trackIdx)) {
+          showToast('ロック中のトラックは削除できません');
+          return false;
+        }
+
+        const targetTrack = state.tracks[trackIdx];
+        const deletedClipIds = new Set(state.clips.filter(c => c.trackId === targetTrack.id).map(c => c.id));
+
+        pushHistoryState('トラック削除');
+
+        // Stop any active playback audio sources or MIDI voices for this track cleanly
+        stopPlaybackForTrack(targetTrack.id, deletedClipIds);
+
+        // Close Piano Roll if editing a clip on this track
+        if (pianoRollState.isOpen && (pianoRollState.trackId === targetTrack.id || (pianoRollState.clipId && deletedClipIds.has(pianoRollState.clipId)))) {
+          closePianoRoll();
+        }
+
+        // Remove track and all its clips from state
+        state.tracks.splice(trackIdx, 1);
+        state.clips = state.clips.filter(c => c.trackId !== targetTrack.id);
+
+        // Purge dynamic peak cache for removed clips and prune orphan audio buffers
+        if (state.dynamicPeakCache && deletedClipIds.size > 0) {
+          for (const key of Array.from(state.dynamicPeakCache.keys())) {
+            const sepIdx = key.indexOf('_');
+            const clipKeyId = sepIdx > 0 ? key.slice(0, sepIdx) : key;
+            if (deletedClipIds.has(clipKeyId)) {
+              state.dynamicPeakCache.delete(key);
+            }
+          }
+        }
+        pruneUnusedAudioBufferCache();
+
+        // Clear selection if deleted track or its clip was selected
+        if (state.selectedTrackId === targetTrack.id) {
+          state.selectedTrackId = null;
+        }
+        if (state.selectedClipId && deletedClipIds.has(state.selectedClipId)) {
+          state.selectedClipId = null;
+        }
+        if (state.fxTargetTrackId === targetTrack.id) {
+          state.fxTargetTrackId = state.tracks[0] ? state.tracks[0].id : 'master';
+        }
+
+        // Dispose Web Audio node graph for removed track
+        disposeTrack(targetTrack);
+
+        updateTrackAudioRouting();
+        rescheduleIfPlaying();
+
+        renderTrackSidebar();
+        renderTimeline();
+        renderPluginFxRack();
+        updateDockTabs();
+        updateClipPropertiesPanel();
+        if (typeof updateMissingAudioBadge === 'function') updateMissingAudioBadge();
+        markProjectDirty();
+
+        showToast(`トラック "${targetTrack.name}" を削除しました`);
+        return true;
+      }
+
+      // Reorder Track (Audio & MIDI, including locked tracks; lock state re-evaluates by new position)
+      function moveTrack(trackId, direction) {
+        const delta = Number(direction) < 0 ? -1 : 1;
+        const idx = state.tracks.findIndex(t => t.id === trackId);
+        if (idx === -1) return false;
+        const targetIdx = idx + delta;
+        if (targetIdx < 0 || targetIdx >= state.tracks.length) return false;
+
+        const targetTrack = state.tracks[idx];
+        const wasLocked = isTrackLocked(idx);
+
+        pushHistoryState(delta < 0 ? 'トラックを上に移動' : 'トラックを下に移動');
+
+        const [moved] = state.tracks.splice(idx, 1);
+        state.tracks.splice(targetIdx, 0, moved);
+
+        const nowLocked = isTrackLocked(targetIdx);
+
+        // Keep Web Audio nodes & active playback intact while updating routing & UI
+        updateTrackAudioRouting();
+        renderTrackSidebar();
+        renderTimeline();
+        renderPluginFxRack();
+        updateDockTabs();
+        updateClipPropertiesPanel();
+        if (typeof refreshOpenPianoRoll === 'function') refreshOpenPianoRoll();
+        markProjectDirty();
+
+        const dirLabel = delta < 0 ? '上' : '下';
+        if (wasLocked && !nowLocked) {
+          showToast(`トラック "${targetTrack.name}" を${dirLabel}に移動しました（ロック解除・編集可能になりました）`);
+        } else if (!wasLocked && nowLocked) {
+          showToast(`トラック "${targetTrack.name}" を${dirLabel}に移動しました（上限超過のためロック状態になりました）`);
+        } else {
+          showToast(`トラック "${targetTrack.name}" を${dirLabel}に移動しました`);
+        }
+        return true;
+      }
+
+      function openNewProjectConfirmModal() {
+        const modal = document.getElementById('new-project-confirm-modal');
+        const msgEl = document.getElementById('new-project-confirm-message');
+        const totalTracks = state.tracks.length;
+        const totalClips = state.clips.length;
+        const lockedCount = state.tracks.filter((_, i) => isTrackLocked(i)).length;
+        if (msgEl) {
+          const lockedPart = lockedCount > 0
+            ? `（うちロック中 <strong style="color: #fbbf24;">${lockedCount} 本</strong>を含む）`
+            : '';
+          msgEl.innerHTML = `現在のプロジェクト（<strong style="color: #f8fafc;">${totalTracks} トラック</strong>${lockedPart} / <strong style="color: #f8fafc;">${totalClips} クリップ</strong>）をすべて消去して、新規プロジェクトを開始しますか？`;
+        }
+        if (modal) modal.classList.remove('waveform-popover-hidden');
+      }
+
+      function closeNewProjectConfirmModal() {
+        const modal = document.getElementById('new-project-confirm-modal');
+        if (modal) modal.classList.add('waveform-popover-hidden');
+      }
+
+      function createNewProject() {
+        closeNewProjectConfirmModal();
+        closeAddTrackPopover();
+        closePianoRoll();
+        closeMissingAudioModal();
+        closeTrackLimitWarningModal();
+        closeDemoOverwriteWarningModal();
+        closeDeleteTrackConfirmModal();
+
+        if (autosaveDebounceTimer) {
+          clearTimeout(autosaveDebounceTimer);
+          autosaveDebounceTimer = null;
+        }
+
+        // Stop active playback cleanly before tearing down tracks/FX
+        stopPlayback();
+
+        isRestoringProject = true;
+        try {
+          audioFileBufferCache.clear();
+          state.tracks.forEach(t => disposeTrack(t));
+          (state.masterFxList || []).forEach(fx => {
+            if (fx.nodes && fx.nodes.cleanup) fx.nodes.cleanup();
+          });
+          if (state.dynamicPeakCache) state.dynamicPeakCache.clear();
+
+          // Reset tracks, clips & selection
+          state.tracks = [];
+          state.clips = [];
+          state.selectedClipId = null;
+          state.selectedTrackId = null;
+          state.dragState = null;
+
+          // Reset transport, grid, zoom, tool & dock settings to initial defaults
+          state.bpm = 120;
+          const bpmInput = document.getElementById('input-bpm');
+          if (bpmInput) bpmInput.value = '120';
+
+          state.isLooping = true;
+          state.loopStart = 0;
+          state.loopEnd = 8;
+          state.currentPlayheadTime = 0;
+          state.playbackStartTimeInCtx = 0;
+          state.playbackStartOffset = 0;
+          const loopBtn = document.getElementById('btn-loop');
+          if (loopBtn) loopBtn.classList.toggle('active', true);
+
+          state.snap = 0.25;
+          const snapSelect = document.getElementById('select-snap');
+          if (snapSelect) snapSelect.value = '0.25';
+
+          state.pixelsPerSecond = 80;
+          const zoomEl = document.getElementById('zoom-level');
+          if (zoomEl) zoomEl.textContent = '100%';
+
+          state.activeTool = 'pointer';
+          if (toolPointerBtn) toolPointerBtn.classList.add('active');
+          if (toolRazorBtn) toolRazorBtn.classList.remove('active');
+          if (workspaceEl) workspaceEl.classList.remove('razor-mode');
+
+          state.activeDockTab = 'clip';
+          state.fxTargetTrackId = 'master';
+
+          // Reset Master volume, DIM/MUTE & FX chain
+          isMasterDim = false;
+          isMasterMute = false;
+          const dimBtn = document.getElementById('btn-master-dim');
+          if (dimBtn) dimBtn.classList.remove('active-dim');
+          const muteBtn = document.getElementById('btn-master-mute');
+          if (muteBtn) muteBtn.classList.remove('active');
+          setMasterVolume(1.0);
+          state.masterFxList = [];
+          rebuildMasterFXChain();
+
+          // Reset waveform display settings
+          state.waveformSettings.lodMode = 'auto';
+          state.waveformSettings.lastCalculatedInterval = 0;
+          state.waveformSettings.lastCalculatedIntervalMs = 0;
+          setWaveformSettings(0.95, 0.45);
+          updateWaveformLODDisplay();
+
+          const btnPanToggle = document.getElementById('btn-toggle-pan-automation');
+          if (btnPanToggle) btnPanToggle.classList.remove('active');
+
+          // Clear Undo/Redo history
+          historyState.undoStack = [];
+          historyState.redoStack = [];
+          updateHistoryButtons();
+
+          // Refresh audio routing & all UI views
+          updateTrackAudioRouting();
+          renderTrackSidebar();
+          renderTimeline();
+          renderPluginFxRack();
+          updateDockTabs();
+          updateClipPropertiesPanel();
+          updateTimeDisplays();
+          updatePlayheadPosition();
+          updateLoopOverlay();
+          updateMissingAudioBadge();
+        } finally {
+          isRestoringProject = false;
+        }
+
+        // Overwrite autosave immediately with empty state so reload cannot bring back old project
+        performAutosave(true);
+        showToast('新規プロジェクトを作成しました');
+      }
+
       // Duplicate Clip immediately after original on same track (shares existing AudioBuffer or clones MIDI notes)
       function duplicateClip(clipId) {
         const original = state.clips.find(c => c.id === clipId);
@@ -7796,6 +8238,7 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           osc,
           gainNode: voiceGain,
           clipId: opts.clipId || null,
+          trackId: opts.trackId || null,
           startTime: noteStartCtxTime,
           endTime: releaseEnd,
           stolen: false
@@ -7836,7 +8279,8 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           gateDurationSec: Math.max(0.06, Number(durationSec) || 0.25),
           offsetIntoNoteSec: 0,
           voiceRegistry: state.activeMidiVoices,
-          clipId: null
+          clipId: null,
+          trackId: track ? track.id : null
         });
       }
 
@@ -8106,7 +8550,8 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
               gateDurationSec,
               offsetIntoNoteSec,
               voiceRegistry: state.activeMidiVoices,
-              clipId: clip.id
+              clipId: clip.id,
+              trackId: track.id
             });
           }
         }
@@ -9644,6 +10089,44 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
             duplicateTrack(track.id);
           });
 
+          // Delete Track Button
+          const delTrackBtn = document.createElement('button');
+          delTrackBtn.className = 'mute-btn btn-delete-track';
+          delTrackBtn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>`;
+          delTrackBtn.disabled = locked;
+          delTrackBtn.title = locked
+            ? 'ロック中のトラックは削除できません（Web版の上限を超えたトラックは保護されます）'
+            : 'このトラックを削除';
+          delTrackBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (locked) {
+              showToast('ロック中のトラックは削除できません');
+              return;
+            }
+            openDeleteTrackConfirmModal(track.id);
+          });
+
+          // Move Track Up / Down Buttons (allowed for all tracks including locked tracks)
+          const moveUpBtn = document.createElement('button');
+          moveUpBtn.className = 'mute-btn btn-move-track btn-move-track-up';
+          moveUpBtn.textContent = '▲';
+          moveUpBtn.disabled = trackIdx === 0;
+          moveUpBtn.title = trackIdx === 0 ? '先頭トラックのため上に移動できません' : 'トラックを上に移動';
+          moveUpBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            moveTrack(track.id, -1);
+          });
+
+          const moveDownBtn = document.createElement('button');
+          moveDownBtn.className = 'mute-btn btn-move-track btn-move-track-down';
+          moveDownBtn.textContent = '▼';
+          moveDownBtn.disabled = trackIdx === state.tracks.length - 1;
+          moveDownBtn.title = trackIdx === state.tracks.length - 1 ? '末尾トラックのため下に移動できません' : 'トラックを下に移動';
+          moveDownBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            moveTrack(track.id, 1);
+          });
+
           // FX Rack Button (viewing FX rack is allowed, editing inside FX rack is blocked when locked)
           const fxCount = (track.fxList || []).length;
           const fxBtn = document.createElement('button');
@@ -9663,8 +10146,11 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
 
           btnGroup.appendChild(fxBtn);
           btnGroup.appendChild(panAutoBtn);
+          btnGroup.appendChild(moveUpBtn);
+          btnGroup.appendChild(moveDownBtn);
           btnGroup.appendChild(autoBtn);
           btnGroup.appendChild(dupTrackBtn);
+          btnGroup.appendChild(delTrackBtn);
           btnGroup.appendChild(muteBtn);
           btnGroup.appendChild(soloBtn);
           headerRow.appendChild(btnGroup);
@@ -13877,6 +14363,50 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
         });
       }
 
+      // Delete Track Confirmation Modal Listeners
+      const deleteTrackModalEl = document.getElementById('delete-track-confirm-modal');
+      const btnCancelDeleteTrack = document.getElementById('btn-cancel-delete-track');
+      const btnConfirmDeleteTrack = document.getElementById('btn-confirm-delete-track');
+      if (btnCancelDeleteTrack) {
+        btnCancelDeleteTrack.addEventListener('click', () => {
+          closeDeleteTrackConfirmModal();
+        });
+      }
+      if (btnConfirmDeleteTrack) {
+        btnConfirmDeleteTrack.addEventListener('click', () => {
+          const targetId = pendingDeleteTrackId;
+          closeDeleteTrackConfirmModal();
+          if (targetId) {
+            deleteTrack(targetId);
+          }
+        });
+      }
+      if (deleteTrackModalEl) {
+        deleteTrackModalEl.addEventListener('click', (e) => {
+          if (e.target === deleteTrackModalEl) closeDeleteTrackConfirmModal();
+        });
+      }
+
+      // New Project Confirmation Modal & Button Listeners
+      const btnNewProject = document.getElementById('btn-new-project');
+      const newProjectModalEl = document.getElementById('new-project-confirm-modal');
+      const btnCancelNewProject = document.getElementById('btn-cancel-new-project');
+      const btnConfirmNewProject = document.getElementById('btn-confirm-new-project');
+      if (btnNewProject) {
+        btnNewProject.addEventListener('click', openNewProjectConfirmModal);
+      }
+      if (btnCancelNewProject) {
+        btnCancelNewProject.addEventListener('click', closeNewProjectConfirmModal);
+      }
+      if (btnConfirmNewProject) {
+        btnConfirmNewProject.addEventListener('click', createNewProject);
+      }
+      if (newProjectModalEl) {
+        newProjectModalEl.addEventListener('click', (e) => {
+          if (e.target === newProjectModalEl) closeNewProjectConfirmModal();
+        });
+      }
+
       const btnMissingAudioBadge = document.getElementById('btn-missing-audio-badge');
       if (btnMissingAudioBadge) {
         btnMissingAudioBadge.addEventListener('click', openMissingAudioModal);
@@ -13987,6 +14517,16 @@ if (typeof lamejs !== "undefined" && typeof window !== "undefined") { window.lam
           }
           if (pianoRollState.isOpen) {
             closePianoRoll();
+            return;
+          }
+          const newProjectModal = document.getElementById('new-project-confirm-modal');
+          if (newProjectModal && !newProjectModal.classList.contains('waveform-popover-hidden')) {
+            closeNewProjectConfirmModal();
+            return;
+          }
+          const deleteTrackModal = document.getElementById('delete-track-confirm-modal');
+          if (deleteTrackModal && !deleteTrackModal.classList.contains('waveform-popover-hidden')) {
+            closeDeleteTrackConfirmModal();
             return;
           }
           const demoOverwriteModal = document.getElementById('demo-overwrite-warning-modal');
